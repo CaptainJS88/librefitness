@@ -11,7 +11,7 @@ if (!supabaseUrl || !supabaseAnonKey) {
     throw new Error('Missing Supabase environment variables. Check your .env file.');
 }
 
-// 1. Create a dummy adapter that prevents crashes during Web Server-Side Rendering
+// Adapter that prevents crashes during Web Server-Side Rendering
 const customStorageAdapter = {
   getItem: (key: string) => {
     if (typeof window === 'undefined') return null;
