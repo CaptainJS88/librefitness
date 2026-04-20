@@ -8,8 +8,9 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { Fonts } from '@/constants/theme';
+import { HeaderTitle } from '@react-navigation/elements';
 
 export default function ProgressScreen() {
   return (
-    <ThemedText><h1>Progress</h1></ThemedText>
+    <ThemedText type='title' lightColor='white' darkColor='black'><h1>Progress</h1></ThemedText>
   )}
