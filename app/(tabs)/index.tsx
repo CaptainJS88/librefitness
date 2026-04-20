@@ -8,7 +8,7 @@ import { Link } from 'expo-router';
 
 export default function HomeScreen() {
   return (
-    <ThemedText><h1>Home</h1></ThemedText>
+    <ThemedText type='title' lightColor='white' darkColor='black'><h1>Home</h1></ThemedText>
   );
 }
 
