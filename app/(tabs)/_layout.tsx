@@ -13,7 +13,7 @@ export default function TabLayout() {
     <Tabs
       screenOptions={{
         tabBarActiveTintColor: Colors[colorScheme ?? 'light'].tint,
-        headerShown: false,
+        headerShown: true,
         tabBarButton: HapticTab,
       }}>
       <Tabs.Screen
@@ -23,11 +23,11 @@ export default function TabLayout() {
           tabBarIcon: ({ color }) => <IconSymbol size={28} name="house.fill" color={color} />,
         }}
       />
-      <Tabs.Screen
-        name="explore"
+       <Tabs.Screen
+        name="progress"
         options={{
-          title: 'Explore',
-          tabBarIcon: ({ color }) => <IconSymbol size={28} name="paperplane.fill" color={color} />,
+          title: 'progress',
+          tabBarIcon: ({ color }) => <IconSymbol size={28} name="progress.indicator" color={color} />,
         }}
       />
     </Tabs>
