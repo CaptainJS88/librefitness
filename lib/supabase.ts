@@ -27,11 +27,12 @@ const customStorageAdapter = {
   },
 };
 
+// detectSessionInUrl to set to true only on web - allows me to test auth flow. 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
     auth: {
       storage: customStorageAdapter,
       autoRefreshToken: true,
       persistSession: true,
-      detectSessionInUrl: false, // Prevents a warning in Expo
+      detectSessionInUrl: Platform.OS === 'web', // Prevents a warning in Expo
     },
   });
