@@ -45,7 +45,13 @@ const TrackerScreen = function() {
         iconName="restaurant" 
         onAddPress={() => console.log('Add Dinner')} 
       />
-
+      <MealsRow 
+        title="Snacks" 
+        currentCalories={100} 
+        maxCalories={300} 
+        iconName="fast-food" 
+        onAddPress={() => console.log('Add Snacks')} 
+      />
       {/* Adding a bottom spacer so the last item isn't hidden by the tab bar */}
       <View style={{ height: 40 }} />
     </View>
@@ -57,7 +63,8 @@ const styles = StyleSheet.create({
     flex: 1, 
     paddingTop: 60, // Gives some space at the top
     paddingHorizontal: 16,
-    backgroundColor: '#F8F9FA' // Matches your theme background
+    backgroundColor: '#F8F9FA', // Matches your theme background
+    overflow: "scroll"
   },
   sectionTitle: {
     fontSize: 22,
