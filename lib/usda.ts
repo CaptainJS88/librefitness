@@ -8,10 +8,10 @@ if (API_KEY) {
 
 export const USDA = {
     //  query to search food 
-    async searchFoods(query: string, pageNumber = 1) {
+    async searchFoods(query: string, pageSize = 1, pageNumber = 1) {
         try {
             const response = await fetch(
-                `${BASE_URL}/foods/search?api_key=${API_KEY}&query=${encodeURIComponent(query)}&pageNumber=${pageNumber}`
+                `${BASE_URL}/foods/search?api_key=${API_KEY}&query=${encodeURIComponent(query)}&pageSize=${pageSize}&pageNumber=${pageNumber}`
             )
             if (!response.ok) throw new Error('USDA Network response was not ok');
 
