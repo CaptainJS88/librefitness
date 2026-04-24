@@ -1,50 +1,27 @@
-# Welcome to your Expo app 👋
+# Libre Fitness (Work in Progress)
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+Hi, I'm Abhishek. This is a work-in-progress fitness and nutrition tracker I'm currently building. 
 
-## Get started
+I started this project to solve my own frustrations with bloated, ad-heavy diet apps. My goal is to create a clean, fast, zero-friction way to log meals and track macros. It also serves as a hands-on environment to deepen my experience with modern mobile-first application development.
 
-1. Install dependencies
+## Tech Stack
+* **Framework:** React Native with Expo (using Expo Router for file-based navigation)
+* **Language:** TypeScript
+* **Backend as a Service:** Supabase (PostgreSQL)
+* **Authentication:** Supabase Auth + Expo Auth Session
+* **External API:** USDA FoodData Central API
+* **State Management:** Zustand (implementation in progress)
 
-   ```bash
-   npm install
-   ```
+## Current Status
+This project is in active development. Here is what has been built so far:
+* **Database Architecture:** A robust relational schema (`profiles`, `daily_logs`, `food_entries`) secured entirely via strict Row Level Security (RLS) policies on the database level.
+* **Authentication:** End-to-end OAuth flow implemented (Google Sign-In) alongside standard Email/Password authentication.
+* **Mobile-First UI:** Built modular, reusable presentational components for the daily macro dashboard and meal categorization.
+* **API Integration:** Wired up an asynchronous client to fetch and parse raw nutritional data directly from the USDA database.
 
-2. Start the app
+## Next Steps
+* Building the Zustand store to manage high-frequency state updates (like searching for foods and calculating remaining daily macros).
+* Completing the search modal to tie the USDA API data directly to the user's daily log in Supabase.
+* Implementing a "Saved Meals" feature to allow one-tap logging for recurring daily meals.
 
-   ```bash
-   npx expo start
-   ```
-
-In the output, you'll find options to open the app in a
-
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
-
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
-
-## Get a fresh project
-
-When you're ready, run:
-
-```bash
-npm run reset-project
-```
-
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
-
-## Learn more
-
-To learn more about developing your project with Expo, look at the following resources:
-
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
-
-## Join the community
-
-Join our community of developers creating universal apps.
-
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+Feel free to poke around the source code!

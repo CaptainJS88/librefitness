@@ -2,8 +2,26 @@ import { StyleSheet, Text, View } from 'react-native';
 import DailySummary from '@/components/Tracker/DailySummary';
 import MealsRow from '@/components/Tracker/MealsRow';
 import { COLORS, SPACING } from '@/constants/theme';
+import { USDA } from '@/lib/usda';
+import { useEffect } from 'react'
 
 const TrackerScreen = function() {
+  useEffect(() => {
+    async function testApi () {
+      console.log("API Key loaded:", process.env.EXPO_PUBLIC_USDA_API_KEY);
+      const response = await USDA.searchFoods('apple', 1);
+      if(response) {
+        console.log(response, "API Fired?")
+      } else {
+        console.error(response)
+      }
+    }
+    testApi();
+  }, [])
+ 
+
+
+  
   return (
     <View style={styles.container}>
       <Text style={styles.headerText}>Tracker Page</Text>
