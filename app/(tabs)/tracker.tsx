@@ -8,7 +8,6 @@ import { useEffect } from 'react'
 const TrackerScreen = function() {
   useEffect(() => {
     async function testApi () {
-      console.log("API Key loaded:", process.env.EXPO_PUBLIC_USDA_API_KEY);
       const response = await USDA.searchFoods('apple');
       if(response) {
         console.log(response, "API Fired?")
