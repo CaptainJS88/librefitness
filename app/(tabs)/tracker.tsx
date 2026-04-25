@@ -11,6 +11,8 @@ const TrackerScreen = function() {
       const response = await USDA.searchFoods('apple');
       if(response) {
         console.log(response, "API Fired?")
+        const cleanData = USDA.extractMacros(response);
+        console.log(cleanData, "clean data")
       } else {
         console.error(response)
       }
