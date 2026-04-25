@@ -1,94 +1,62 @@
-import { StyleSheet, Text, View } from 'react-native';
+import { ScrollView, StyleSheet } from 'react-native';
+import { useEffect } from 'react';
 import DailySummary from '@/components/Tracker/DailySummary';
 import MealsRow from '@/components/Tracker/MealsRow';
-import { COLORS, SPACING } from '@/constants/theme';
+import { SPACING } from '@/constants/theme';
 import { USDA } from '@/lib/usda';
-import { useEffect } from 'react'
+import { ThemedText } from '@/components/Shared/ThemedText';
+import { ThemedView } from '@/components/Shared/ThemedView';
 
-const TrackerScreen = function() {
+const TrackerScreen = function () {
   useEffect(() => {
-    async function testApi () {
+    async function testApi() {
       const response = await USDA.searchFoods('apple');
-      if(response) {
-        console.log(response, "API Fired?")
-        const cleanData = USDA.extractMacros(response);
-        console.log(cleanData, "clean data")
-      } else {
-        console.error(response)
-      }
+      console.log(response);
     }
+
     testApi();
-  }, [])
- 
+  }, []);
 
-
-  
   return (
-    <View style={styles.container}>
-      <Text style={styles.headerText}>Tracker Page</Text>
-      
-      {/* Passing in the required dummy data so the component can render */}
-      <DailySummary 
-        dietName="Mediterranean Diet"
-        targetCalories={2500}
-        consumedCalories={1240}
-        burnedCalories={300}
-        carbs={{ current: 150, max: 344 }}
-        protein={{ current: 80, max: 125 }}
-        fat={{ current: 35, max: 69 }}
-      />
+    <ThemedView variant="background" style={styles.screen}>
+      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+        <ThemedText style={styles.headerText}>Tracker Page</ThemedText>
 
-      <View style={styles.mealsHeader}>
-        <Text style={styles.sectionTitle}>Eaten</Text>
-      </View>
-      <MealsRow 
-        title="Breakfast" 
-        currentCalories={600} 
-        maxCalories={625} 
-        iconName="cafe" 
-        onAddPress={() => console.log('Add Breakfast')} 
-      />
-      
-      <MealsRow 
-        title="Lunch" 
-        currentCalories={640} 
-        maxCalories={750} 
-        iconName="fast-food" 
-        onAddPress={() => console.log('Add Lunch')} 
-      />
+        <DailySummary
+          dietName="Mediterranean Diet"
+          targetCalories={2500}
+          consumedCalories={1240}
+          burnedCalories={300}
+          carbs={{ current: 150, max: 344 }}
+          protein={{ current: 80, max: 125 }}
+          fat={{ current: 35, max: 69 }}
+        />
 
-      <MealsRow 
-        title="Dinner" 
-        currentCalories={0} 
-        maxCalories={725} 
-        iconName="restaurant" 
-        onAddPress={() => console.log('Add Dinner')} 
-      />
-      <MealsRow 
-        title="Snacks" 
-        currentCalories={100} 
-        maxCalories={300} 
-        iconName="fast-food" 
-        onAddPress={() => console.log('Add Snacks')} 
-      />
-      {/* Adding a bottom spacer so the last item isn't hidden by the tab bar */}
-      <View style={{ height: 40 }} />
-    </View>
+        <ThemedView style={styles.mealsHeader}>
+          <ThemedText style={styles.sectionTitle}>Eaten</ThemedText>
+        </ThemedView>
+
+        <MealsRow title="Breakfast" currentCalories={600} maxCalories={625} iconName="cafe" onAddPress={() => console.log('Add Breakfast')} />
+        <MealsRow title="Lunch" currentCalories={640} maxCalories={750} iconName="fast-food" onAddPress={() => console.log('Add Lunch')} />
+        <MealsRow title="Dinner" currentCalories={0} maxCalories={725} iconName="restaurant" onAddPress={() => console.log('Add Dinner')} />
+        <MealsRow title="Snacks" currentCalories={100} maxCalories={300} iconName="fast-food" onAddPress={() => console.log('Add Snacks')} />
+      </ScrollView>
+    </ThemedView>
   );
-}
+};
 
 const styles = StyleSheet.create({
-  container: { 
-    flex: 1, 
-    paddingTop: 60, // Gives some space at the top
+  screen: {
+    flex: 1,
+  },
+  content: {
+    paddingTop: 60,
     paddingHorizontal: 16,
-    backgroundColor: '#F8F9FA', // Matches your theme background
-    overflow: "scroll"
+    paddingBottom: 40,
   },
   sectionTitle: {
     fontSize: 22,
     fontWeight: 'bold',
-    color: COLORS.text,
   },
   headerText: {
     fontSize: 24,
@@ -98,7 +66,7 @@ const styles = StyleSheet.create({
   mealsHeader: {
     marginTop: SPACING.sm,
     marginBottom: SPACING.md,
-  }
+  },
 });
 
 export default TrackerScreen;

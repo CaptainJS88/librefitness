@@ -1,9 +1,11 @@
-import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { COLORS, SPACING } from '@/constants/theme';
-import Icon from '@/components/Shared/Icon';
+import { StyleSheet, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { SPACING } from '@/constants/theme';
+import { useAppTheme } from '@/hooks/useAppTheme';
+import Icon from '@/components/Shared/Icon';
+import { ThemedText } from '../Shared/ThemedText';
+import { ThemedView } from '../Shared/ThemedView';
 
-// Data type for meal row
 type MealsRowProps = {
   title: string;
   currentCalories: number;
@@ -12,34 +14,37 @@ type MealsRowProps = {
   onAddPress: () => void;
 };
 
-export default function MealsRow({ 
-  title, 
-  currentCalories, 
-  maxCalories, 
-  iconName, 
-  onAddPress 
+export default function MealsRow({
+  title,
+  currentCalories,
+  maxCalories,
+  iconName,
+  onAddPress,
 }: MealsRowProps) {
-  return (
-    <View style={styles.container}>
-      {/* Left side: Icon and Text */}
-      <View style={styles.leftContent}>
-        <View style={styles.iconContainer}>
-          <Icon name={iconName} size={24} color={COLORS.primary} />
-        </View>
-        
-        <View style={styles.textContainer}>
-          <Text style={styles.title}>{title}</Text>
-          <Text style={styles.calorieText}>
-            {currentCalories}/{maxCalories} kcal
-          </Text>
-        </View>
-      </View>
+  const { colors } = useAppTheme();
 
-      {/* Right side: Action Button */}
-      <TouchableOpacity style={styles.addButton} onPress={onAddPress}>
-        <Icon name="add" size={24} color={COLORS.surface} />
+  return (
+    <ThemedView variant="surface" style={styles.container}>
+      <ThemedView style={styles.leftContent}>
+        <ThemedView style={[styles.iconContainer, { backgroundColor: colors.iconSurface }]}>
+          <Icon name={iconName} size={24} variant="primary" />
+        </ThemedView>
+
+        <ThemedView style={styles.textContainer}>
+          <ThemedText style={styles.title}>{title}</ThemedText>
+          <ThemedText variant="textMuted" style={styles.calorieText}>
+            {currentCalories}/{maxCalories} kcal
+          </ThemedText>
+        </ThemedView>
+      </ThemedView>
+
+      <TouchableOpacity
+        style={[styles.addButton, { backgroundColor: colors.primary }]}
+        onPress={onAddPress}
+      >
+        <Icon name="add" size={24} color={colors.buttonText} />
       </TouchableOpacity>
-    </View>
+    </ThemedView>
   );
 }
 
@@ -48,16 +53,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    backgroundColor: COLORS.surface,
     padding: SPACING.md,
     borderRadius: 20,
     marginBottom: SPACING.md,
-    // Subtle shadow to match DailySummary
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 6,
-    elevation: 2,
   },
   leftContent: {
     flexDirection: 'row',
@@ -65,7 +63,6 @@ const styles = StyleSheet.create({
   },
   iconContainer: {
     marginRight: SPACING.md,
-    backgroundColor: '#F0F4F8', // Light blue background for the icon
     padding: 10,
     borderRadius: 12,
   },
@@ -75,15 +72,12 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 18,
     fontWeight: '600',
-    color: COLORS.text,
   },
   calorieText: {
     fontSize: 14,
-    color: COLORS.textMuted,
     marginTop: 2,
   },
   addButton: {
-    backgroundColor: COLORS.primary,
     width: 40,
     height: 40,
     borderRadius: 20,

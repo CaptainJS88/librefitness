@@ -1,6 +1,8 @@
 import { Text, View } from 'react-native';
 import { useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
+import { ThemedText } from '@/components/Shared/ThemedText';
+import { ThemedView } from '@/components/Shared/ThemedView';
 
 const ProgressScreen = function () {
     useEffect(() => {
@@ -20,9 +22,9 @@ const ProgressScreen = function () {
 
     }, [])
     return (
-        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-            <Text>Progress Page</Text>
-        </View>
+        <ThemedView style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+            <ThemedText>Progress Page</ThemedText>
+        </ThemedView>
     );
 }
 

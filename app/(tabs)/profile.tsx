@@ -1,10 +1,13 @@
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/contexts/AuthContext';
+import { useThemeStore } from '@/store/useThemeStore';
+import { ThemedText } from '@/components/Shared/ThemedText';
+import { ThemedView } from '@/components/Shared/ThemedView';
 
 const ProfileScreen = function () {
-
     const { session } = useAuth();
+    const { toggleTheme } = useThemeStore();
 
     async function handleSignOut() {
         const result = await supabase.auth.signOut();
@@ -13,15 +16,21 @@ const ProfileScreen = function () {
         }
     }
     return (
-        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-            <Text>Profile Page</Text>
-            <Text style={styles.emailText}>
+        <ThemedView style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+            <ThemedText>Profile Page</ThemedText>
+            <ThemedText style={styles.emailText}>
                 Logged in as: {session?.user?.email || 'Unknown User'}
-            </Text>
+            </ThemedText>
             <TouchableOpacity style={styles.button} onPress={handleSignOut}>
-                <Text style={styles.buttonText}>Sign Out</Text>
+                <ThemedText style={styles.buttonText}>Sign Out</ThemedText>
             </TouchableOpacity>
-        </View>
+            <ThemedText style={styles.emailText}>
+                Toggle theme
+            </ThemedText>
+            <TouchableOpacity style={styles.button} onPress={toggleTheme}>
+                <ThemedText style={styles.buttonText}>Toggle Theme</ThemedText>
+            </TouchableOpacity>
+        </ThemedView>
     );
 }
 

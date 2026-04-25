@@ -4,6 +4,8 @@ import { supabase } from '@/lib/supabase';
 import * as WebBrowser from 'expo-web-browser';
 import { makeRedirectUri } from 'expo-auth-session';
 import * as QueryParams from 'expo-auth-session/build/QueryParams';
+import { ThemedText } from '@/components/Shared/ThemedText';
+import { ThemedView } from '@/components/Shared/ThemedView';
 
 const LoginScreen = function () {
     const [email, setEmail] = useState('');
@@ -89,8 +91,8 @@ const LoginScreen = function () {
 
         // Email and password fields, with buttons
         return (
-            <View style={styles.container}>
-                <Text style={styles.header}>Libre Fitness</Text>
+            <ThemedView style={styles.container}>
+                <ThemedText style={styles.header}>Libre Fitness</ThemedText>
 
                 <TextInput
                     style={styles.input}
@@ -110,24 +112,24 @@ const LoginScreen = function () {
                 />
 
                 <TouchableOpacity style={styles.button} onPress={signInWithEmail} disabled={loading}>
-                    <Text style={styles.buttonText}>Sign In</Text>
+                    <ThemedText style={styles.buttonText}>Sign In</ThemedText>
                 </TouchableOpacity>
 
                 <TouchableOpacity style={[styles.button, styles.outlineButton]} onPress={signUpWithEmail} disabled={loading}>
-                    <Text style={styles.outlineText}>Sign Up</Text>
+                    <ThemedText style={styles.outlineText}>Sign Up</ThemedText>
                 </TouchableOpacity>
 
-                <View style={styles.dividerContainer}>
-                    <View style={styles.line} />
-                    <Text style={styles.dividerText}>OR</Text>
-                    <View style={styles.line} />
-                </View>
+                <ThemedView style={styles.dividerContainer}>
+                    <ThemedView style={styles.line} />
+                    <ThemedText style={styles.dividerText}>OR</ThemedText>
+                    <ThemedView style={styles.line} />
+                </ThemedView>
 
                 <TouchableOpacity style={[styles.button, styles.socialButton]} onPress={performGoogleOAuth} disabled={loading}>
-                    <Text style={styles.socialText}>Continue with Google</Text>
+                    <ThemedText style={styles.socialText}>Continue with Google</ThemedText>
                 </TouchableOpacity>
 
-            </View>
+            </ThemedView>
         );
     }
 
