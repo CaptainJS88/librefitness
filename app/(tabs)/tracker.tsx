@@ -2,16 +2,34 @@ import { ScrollView, StyleSheet } from 'react-native';
 import DailySummary from '@/components/Tracker/DailySummary';
 import MealsRow from '@/components/Tracker/MealsRow';
 import { SPACING } from '@/constants/theme';
-import { USDA } from '@/lib/usda';
+import { USDA, type CleanFoodItem } from '@/lib/usda';
 import { ThemedText } from '@/components/Shared/ThemedText';
 import { ThemedView } from '@/components/Shared/ThemedView';
 import { mapUSDAFoodToCleanFoodItem, mapUSDASearchResponseToCleanFoods } from '@/lib/usda.mapper';
 import { useEffect, useState } from 'react';
 import SearchModal from '@/components/Tracker/SearchModal';
-import type { CleanFoodItem } from '@/lib/usda';
+import DateSwiper from '@/components/Tracker/DateSwiper';
 
+// Normalizes a Date to local midnight.
+// This keeps date comparisons and UI state predictable.
+function startOfDay(date: Date) {
+  return new Date(date.getFullYear(), date.getMonth(), date.getDate());
+}
+
+// Small display helper for the label above the pills.
+// Example: "Friday, Apr 25"
+function formatSelectedDate(date: Date) {
+  return date.toLocaleDateString('en-US', {
+    weekday: 'long',
+    month: 'short',
+    day: 'numeric',
+  });
+}
 
 const TrackerScreen = function () {
+  // Tracks which day the user is currently viewing.
+  const [selectedDate, setSelectedDate] = useState(startOfDay(new Date()));
+
   // Tracks whether the search modal is open.
   const [isSearchModalVisible, setIsSearchModalVisible] = useState(false);
 
@@ -24,15 +42,16 @@ const TrackerScreen = function () {
     setIsSearchModalVisible(true);
   }
 
+    // Closes the modal and resets the active meal label.
+    function closeSearchModal() {
+      setIsSearchModalVisible(false);
+      setActiveMeal('Meal');
+    }
+
   // TODO: Implement handle food addition
   function handleAddFood(food: CleanFoodItem) {
-    console.log(`Selected food for ${activeMeal}:`, food);
+    console.log(`Selected food for ${activeMeal} on ${selectedDate.toISOString()}:`, food);
     closeSearchModal();
-  }
-  // Closes the modal and resets the active meal label.
-  function closeSearchModal() {
-    setIsSearchModalVisible(false);
-    setActiveMeal('Meal');
   }
 
   useEffect(() => {
@@ -50,8 +69,23 @@ const TrackerScreen = function () {
 
   return (
     <ThemedView variant="background" style={styles.screen}>
-      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+      <ScrollView
+        contentContainerStyle={styles.content}
+        showsVerticalScrollIndicator={false}
+      >
         <ThemedText style={styles.headerText}>Tracker Page</ThemedText>
+
+        {/* This label makes the currently selected day explicit. */}
+        <ThemedText variant="textMuted" style={styles.dateLabel}>
+          {formatSelectedDate(selectedDate)}
+        </ThemedText>
+
+        {/* The date swiper is a dumb UI component.
+            It only displays dates and notifies the screen when one is selected. */}
+        <DateSwiper
+          selectedDate={selectedDate}
+          onSelectDate={setSelectedDate}
+        />
 
         <DailySummary
           dietName="Mediterranean Diet"
@@ -67,11 +101,39 @@ const TrackerScreen = function () {
           <ThemedText style={styles.sectionTitle}>Eaten</ThemedText>
         </ThemedView>
 
-        <MealsRow title="Breakfast" currentCalories={600} maxCalories={625} iconName="cafe" onAddPress={() => openSearchModal('Breakfast')} />
-        <MealsRow title="Lunch" currentCalories={640} maxCalories={750} iconName="fast-food" onAddPress={() => openSearchModal('Lunch')} />
-        <MealsRow title="Dinner" currentCalories={0} maxCalories={725} iconName="restaurant" onAddPress={() => openSearchModal('Dinner')} />
-        <MealsRow title="Snacks" currentCalories={100} maxCalories={300} iconName="fast-food" onAddPress={() => openSearchModal('Snacks')} />
+        <MealsRow
+          title="Breakfast"
+          currentCalories={600}
+          maxCalories={625}
+          iconName="cafe"
+          onAddPress={() => openSearchModal('Breakfast')}
+        />
+
+        <MealsRow
+          title="Lunch"
+          currentCalories={640}
+          maxCalories={750}
+          iconName="fast-food"
+          onAddPress={() => openSearchModal('Lunch')}
+        />
+
+        <MealsRow
+          title="Dinner"
+          currentCalories={0}
+          maxCalories={725}
+          iconName="restaurant"
+          onAddPress={() => openSearchModal('Dinner')}
+        />
+
+        <MealsRow
+          title="Snacks"
+          currentCalories={100}
+          maxCalories={300}
+          iconName="fast-food"
+          onAddPress={() => openSearchModal('Snacks')}
+        />
       </ScrollView>
+
       <SearchModal
         visible={isSearchModalVisible}
         mealLabel={activeMeal}
@@ -79,7 +141,6 @@ const TrackerScreen = function () {
         onAddFood={handleAddFood}
         pageSize={10}
       />
-
     </ThemedView>
   );
 };
@@ -93,14 +154,18 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingBottom: 40,
   },
-  sectionTitle: {
-    fontSize: 22,
-    fontWeight: 'bold',
-  },
   headerText: {
     fontSize: 24,
     fontWeight: 'bold',
-    marginBottom: 20,
+    marginBottom: 8,
+  },
+  dateLabel: {
+    fontSize: 14,
+    marginBottom: SPACING.md,
+  },
+  sectionTitle: {
+    fontSize: 22,
+    fontWeight: 'bold',
   },
   mealsHeader: {
     marginTop: SPACING.sm,
