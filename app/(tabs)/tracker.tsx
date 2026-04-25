@@ -6,12 +6,17 @@ import { SPACING } from '@/constants/theme';
 import { USDA } from '@/lib/usda';
 import { ThemedText } from '@/components/Shared/ThemedText';
 import { ThemedView } from '@/components/Shared/ThemedView';
+import { mapUSDAFoodToCleanFoodItem, mapUSDASearchResponseToCleanFoods } from '@/lib/usda.mapper';
 
 const TrackerScreen = function () {
   useEffect(() => {
     async function testApi() {
       const response = await USDA.searchFoods('apple');
-      console.log(response);
+      console.log("Raw data from USDA", response);
+      const filteredData = mapUSDAFoodToCleanFoodItem(response.foods[0]);
+      console.log("filteredData", filteredData);
+      const allFoodItems = mapUSDASearchResponseToCleanFoods(response);
+      console.log("allFoodItems", allFoodItems);
     }
 
     testApi();

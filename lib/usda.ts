@@ -38,45 +38,5 @@ export const USDA = {
       console.error('Edge Function Search Error:', error);
       return null;
     }
-  },
-
-  // Macro & Micro Extractor helper function
-  extractMacros(usdaItem: any): CleanFoodItem {
-    const nutrients = usdaItem.foodNutrients || [];
-
-    const getNutrient = (id: number) => {
-      const nutrient = nutrients.find((n: any) => n.nutrientId === id);
-      return nutrient ? nutrient.value : 0;
-    };
-
-    const servingSize = usdaItem.servingSize || 100;
-    const servingSizeUnit = usdaItem.servingSizeUnit || 'g';
-    const multiplier = servingSize / 100;
-
-    // Helper to calculate and round values
-    const calc = (id: number) => Math.round((getNutrient(id) * multiplier) * 10) / 10;
-
-    return {
-      fdcId: usdaItem.fdcId,
-      description: usdaItem.description,
-      brandOwner: usdaItem.brandOwner,
-      servingSize,
-      servingSizeUnit,
-      // Big Four
-      calories: Math.round(getNutrient(1008) * multiplier),
-      protein: calc(1003),
-      carbs: calc(1005),
-      fat: calc(1004),
-      // Micros
-      micros: {
-        fiber: calc(1079),
-        sugar: calc(2000),
-        sodium: calc(1093),
-        cholesterol: calc(1253),
-        calcium: calc(1087),
-        iron: calc(1089),
-        vitaminC: calc(1162),
-      }
-    };
   }
 };
