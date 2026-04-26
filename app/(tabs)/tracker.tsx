@@ -14,11 +14,17 @@ import SearchModal from '@/components/Tracker/SearchModal';
 import DateSwiper from '@/components/Tracker/DateSwiper';
 import { useAuth } from '@/contexts/AuthContext';
 import {
+  getDailyLogByDate,
   getOrCreateDailyLog,
   getProfileDefaultTargets,
   type DailyLogTargetsInput,
 } from '@/lib/dailyLogs';
-import { addFoodEntry, type MealType } from '@/lib/foodEntries';
+import {
+  addFoodEntry,
+  getFoodEntriesForDailyLog,
+  type FoodEntryRow,
+  type MealType,
+} from '@/lib/foodEntries';
 
 // Normalizes a Date to local midnight.
 // This keeps date comparisons and UI state predictable.
@@ -46,6 +52,31 @@ function formatDateForDatabase(date: Date) {
   return `${year}-${month}-${day}`;
 }
 
+// Small helper so all summary totals are rounded consistently.
+function roundToOneDecimal(value: number) {
+  return Math.round(value * 10) / 10;
+}
+
+// Computes the current consumed calories and macros from the day's food entries.
+// This keeps the DailySummary math in one place and easy to inspect.
+function calculateNutritionTotals(entries: FoodEntryRow[]) {
+  return entries.reduce(
+    (totals, entry) => {
+      totals.calories += entry.calories;
+      totals.protein += entry.protein;
+      totals.carbs += entry.carbs;
+      totals.fat += entry.fat;
+      return totals;
+    },
+    {
+      calories: 0,
+      protein: 0,
+      carbs: 0,
+      fat: 0,
+    }
+  );
+}
+
 const TrackerScreen = function () {
   const { session } = useAuth();
 
@@ -59,8 +90,15 @@ const TrackerScreen = function () {
   const [activeMeal, setActiveMeal] = useState<MealType>('Breakfast');
 
   // Stores the user's current default calorie/macro targets from profiles.
-  // These are used to replace the hardcoded target values in DailySummary.
   const [defaultTargets, setDefaultTargets] = useState<DailyLogTargetsInput | null>(null);
+
+  // Stores the selected day's current food entries.
+  // We use these to derive real consumed calories and macros.
+  const [foodEntries, setFoodEntries] = useState<FoodEntryRow[]>([]);
+
+  // Tracks whether the selected date is currently loading.
+  // Useful now for discipline, even if we are not rendering a loading UI yet.
+  const [isDayLoading, setIsDayLoading] = useState(false);
 
   // Opens the modal and remembers which meal triggered it.
   function openSearchModal(mealLabel: MealType) {
@@ -73,8 +111,40 @@ const TrackerScreen = function () {
     setIsSearchModalVisible(false);
   }
 
-  // Loads the user's default targets from profiles.
-  // For now, this drives only the target values shown in DailySummary.
+  // Loads one selected day's log and food entries.
+  // Important: viewing a date should not create a daily_log.
+  // We only fetch what exists and show an empty day if nothing exists yet.
+  async function loadSelectedDayData() {
+    try {
+      if (!session?.user?.id) {
+        setFoodEntries([]);
+        return;
+      }
+
+      setIsDayLoading(true);
+
+      const selectedDateString = formatDateForDatabase(selectedDate);
+      const dailyLog = await getDailyLogByDate(session.user.id, selectedDateString);
+
+      // If no daily log exists yet for this date, that simply means
+      // the day has no saved data so far.
+      if (!dailyLog) {
+        setFoodEntries([]);
+        return;
+      }
+
+      const entries = await getFoodEntriesForDailyLog(dailyLog.id);
+      setFoodEntries(entries);
+    } catch (error) {
+      console.error('Error loading selected day data:', error);
+      Alert.alert('Error', 'Unable to load food logs for this date.');
+    } finally {
+      setIsDayLoading(false);
+    }
+  }
+
+  // Loads the user's current default targets from profiles.
+  // For now, these drive the target values shown in DailySummary.
   useEffect(() => {
     async function loadDefaultTargets() {
       try {
@@ -92,11 +162,19 @@ const TrackerScreen = function () {
     loadDefaultTargets();
   }, [session?.user?.id]);
 
+  // Reloads the selected day's existing saved data whenever:
+  // - the signed-in user changes
+  // - the selected date changes
+  useEffect(() => {
+    loadSelectedDayData();
+  }, [session?.user?.id, selectedDate]);
+
   // First end-to-end add-food flow:
   // 1. Make sure we have an authenticated user
   // 2. Get or create the selected day's daily_log
   // 3. Insert the food entry under that daily_log
-  // 4. Close the modal if successful
+  // 4. Refresh the selected day so the UI updates from real DB data
+  // 5. Close the modal if successful
   async function handleAddFood(food: CleanFoodItem) {
     try {
       if (!session?.user?.id) {
@@ -127,6 +205,10 @@ const TrackerScreen = function () {
       });
 
       console.log('Inserted food entry:', insertedFoodEntry);
+
+      // Pull fresh data from the database so the summary reflects the new entry.
+      await loadSelectedDayData();
+
       closeSearchModal();
     } catch (error) {
       console.error('Error adding food:', error);
@@ -151,6 +233,9 @@ const TrackerScreen = function () {
     testApi();
   }, []);
 
+  // Derive real summary values from the day's saved food entries.
+  const nutritionTotals = calculateNutritionTotals(foodEntries);
+
   return (
     <ThemedView variant="background" style={styles.screen}>
       <ScrollView
@@ -174,11 +259,20 @@ const TrackerScreen = function () {
         <DailySummary
           dietName="Mediterranean Diet"
           targetCalories={defaultTargets?.targetCalories ?? 0}
-          consumedCalories={1240}
-          burnedCalories={300}
-          carbs={{ current: 150, max: defaultTargets?.targetCarbs ?? 0 }}
-          protein={{ current: 80, max: defaultTargets?.targetProtein ?? 0 }}
-          fat={{ current: 35, max: defaultTargets?.targetFats ?? 0 }}
+          consumedCalories={roundToOneDecimal(nutritionTotals.calories)}
+          burnedCalories={0}
+          carbs={{
+            current: roundToOneDecimal(nutritionTotals.carbs),
+            max: defaultTargets?.targetCarbs ?? 0,
+          }}
+          protein={{
+            current: roundToOneDecimal(nutritionTotals.protein),
+            max: defaultTargets?.targetProtein ?? 0,
+          }}
+          fat={{
+            current: roundToOneDecimal(nutritionTotals.fat),
+            max: defaultTargets?.targetFats ?? 0,
+          }}
         />
 
         <ThemedView style={styles.mealsHeader}>
