@@ -13,7 +13,11 @@ import { useEffect, useState } from 'react';
 import SearchModal from '@/components/Tracker/SearchModal';
 import DateSwiper from '@/components/Tracker/DateSwiper';
 import { useAuth } from '@/contexts/AuthContext';
-import { getOrCreateDailyLog } from '@/lib/dailyLogs';
+import {
+  getOrCreateDailyLog,
+  getProfileDefaultTargets,
+  type DailyLogTargetsInput,
+} from '@/lib/dailyLogs';
 import { addFoodEntry, type MealType } from '@/lib/foodEntries';
 
 // Normalizes a Date to local midnight.
@@ -54,6 +58,10 @@ const TrackerScreen = function () {
   // Tracks which meal the user is currently adding food to.
   const [activeMeal, setActiveMeal] = useState<MealType>('Breakfast');
 
+  // Stores the user's current default calorie/macro targets from profiles.
+  // These are used to replace the hardcoded target values in DailySummary.
+  const [defaultTargets, setDefaultTargets] = useState<DailyLogTargetsInput | null>(null);
+
   // Opens the modal and remembers which meal triggered it.
   function openSearchModal(mealLabel: MealType) {
     setActiveMeal(mealLabel);
@@ -64,6 +72,25 @@ const TrackerScreen = function () {
   function closeSearchModal() {
     setIsSearchModalVisible(false);
   }
+
+  // Loads the user's default targets from profiles.
+  // For now, this drives only the target values shown in DailySummary.
+  useEffect(() => {
+    async function loadDefaultTargets() {
+      try {
+        if (!session?.user?.id) {
+          return;
+        }
+
+        const targets = await getProfileDefaultTargets(session.user.id);
+        setDefaultTargets(targets);
+      } catch (error) {
+        console.error('Error loading default targets:', error);
+      }
+    }
+
+    loadDefaultTargets();
+  }, [session?.user?.id]);
 
   // First end-to-end add-food flow:
   // 1. Make sure we have an authenticated user
@@ -146,12 +173,12 @@ const TrackerScreen = function () {
 
         <DailySummary
           dietName="Mediterranean Diet"
-          targetCalories={2500}
+          targetCalories={defaultTargets?.targetCalories ?? 0}
           consumedCalories={1240}
           burnedCalories={300}
-          carbs={{ current: 150, max: 344 }}
-          protein={{ current: 80, max: 125 }}
-          fat={{ current: 35, max: 69 }}
+          carbs={{ current: 150, max: defaultTargets?.targetCarbs ?? 0 }}
+          protein={{ current: 80, max: defaultTargets?.targetProtein ?? 0 }}
+          fat={{ current: 35, max: defaultTargets?.targetFats ?? 0 }}
         />
 
         <ThemedView style={styles.mealsHeader}>
