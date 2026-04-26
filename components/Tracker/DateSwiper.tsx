@@ -3,7 +3,6 @@ import {
   FlatList,
   StyleSheet,
   TouchableOpacity,
-  useWindowDimensions,
   View,
 } from 'react-native';
 import { SPACING } from '@/constants/theme';
@@ -71,7 +70,6 @@ export default function DateSwiper({
 }: DateSwiperProps) {
   const { colors } = useAppTheme();
   const flatListRef = useRef<FlatList<DateItem>>(null);
-  const { width } = useWindowDimensions();
 
   // We build the range around "today" once, then just move inside it.
   const today = useMemo(() => startOfDay(new Date()), []);
