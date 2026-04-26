@@ -1,14 +1,20 @@
-import { ScrollView, StyleSheet } from 'react-native';
+import { Alert, ScrollView, StyleSheet } from 'react-native';
 import DailySummary from '@/components/Tracker/DailySummary';
 import MealsRow from '@/components/Tracker/MealsRow';
 import { SPACING } from '@/constants/theme';
 import { USDA, type CleanFoodItem } from '@/lib/usda';
 import { ThemedText } from '@/components/Shared/ThemedText';
 import { ThemedView } from '@/components/Shared/ThemedView';
-import { mapUSDAFoodToCleanFoodItem, mapUSDASearchResponseToCleanFoods } from '@/lib/usda.mapper';
+import {
+  mapUSDAFoodToCleanFoodItem,
+  mapUSDASearchResponseToCleanFoods,
+} from '@/lib/usda.mapper';
 import { useEffect, useState } from 'react';
 import SearchModal from '@/components/Tracker/SearchModal';
 import DateSwiper from '@/components/Tracker/DateSwiper';
+import { useAuth } from '@/contexts/AuthContext';
+import { getOrCreateDailyLog } from '@/lib/dailyLogs';
+import { addFoodEntry, type MealType } from '@/lib/foodEntries';
 
 // Normalizes a Date to local midnight.
 // This keeps date comparisons and UI state predictable.
@@ -16,7 +22,7 @@ function startOfDay(date: Date) {
   return new Date(date.getFullYear(), date.getMonth(), date.getDate());
 }
 
-// Small display helper for the label above the pills.
+// Formats the selected date for display in the UI.
 // Example: "Friday, Apr 25"
 function formatSelectedDate(date: Date) {
   return date.toLocaleDateString('en-US', {
@@ -26,7 +32,19 @@ function formatSelectedDate(date: Date) {
   });
 }
 
+// Converts a JS Date into the YYYY-MM-DD format expected by your daily_logs table.
+// We build the string from local date parts so timezone offsets do not shift the day.
+function formatDateForDatabase(date: Date) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+
+  return `${year}-${month}-${day}`;
+}
+
 const TrackerScreen = function () {
+  const { session } = useAuth();
+
   // Tracks which day the user is currently viewing.
   const [selectedDate, setSelectedDate] = useState(startOfDay(new Date()));
 
@@ -34,34 +52,73 @@ const TrackerScreen = function () {
   const [isSearchModalVisible, setIsSearchModalVisible] = useState(false);
 
   // Tracks which meal the user is currently adding food to.
-  const [activeMeal, setActiveMeal] = useState<string>('Meal');
+  const [activeMeal, setActiveMeal] = useState<MealType>('Breakfast');
 
   // Opens the modal and remembers which meal triggered it.
-  function openSearchModal(mealLabel: string) {
+  function openSearchModal(mealLabel: MealType) {
     setActiveMeal(mealLabel);
     setIsSearchModalVisible(true);
   }
 
-    // Closes the modal and resets the active meal label.
-    function closeSearchModal() {
-      setIsSearchModalVisible(false);
-      setActiveMeal('Meal');
-    }
+  // Closes the modal.
+  function closeSearchModal() {
+    setIsSearchModalVisible(false);
+  }
 
-  // TODO: Implement handle food addition
-  function handleAddFood(food: CleanFoodItem) {
-    console.log(`Selected food for ${activeMeal} on ${selectedDate.toISOString()}:`, food);
-    closeSearchModal();
+  // First end-to-end add-food flow:
+  // 1. Make sure we have an authenticated user
+  // 2. Get or create the selected day's daily_log
+  // 3. Insert the food entry under that daily_log
+  // 4. Close the modal if successful
+  async function handleAddFood(food: CleanFoodItem) {
+    try {
+      if (!session?.user?.id) {
+        Alert.alert('Not signed in', 'You must be signed in to add food.');
+        return;
+      }
+
+      const selectedDateString = formatDateForDatabase(selectedDate);
+
+      const dailyLog = await getOrCreateDailyLog(
+        session.user.id,
+        selectedDateString
+      );
+
+      const insertedFoodEntry = await addFoodEntry({
+        dailyLogId: dailyLog.id,
+        mealType: activeMeal,
+        usdaFoodId: food.fdcId,
+        foodName: food.description,
+        servingSizeValue: food.servingSize,
+        servingSizeUnit: food.servingSizeUnit,
+        servingWeightGrams:
+          food.servingSizeUnit.toLowerCase() === 'g' ? food.servingSize : null,
+        calories: food.calories,
+        protein: food.protein,
+        carbs: food.carbs,
+        fat: food.fat,
+      });
+
+      console.log('Inserted food entry:', insertedFoodEntry);
+      closeSearchModal();
+    } catch (error) {
+      console.error('Error adding food:', error);
+      Alert.alert('Error', 'Unable to add food right now.');
+    }
   }
 
   useEffect(() => {
     async function testApi() {
       const response = await USDA.searchFoods('apple');
-      console.log("Raw data from USDA", response);
-      const filteredData = mapUSDAFoodToCleanFoodItem(response.foods[0]);
-      console.log("filteredData", filteredData);
+      console.log('Raw data from USDA', response);
+
+      if (response?.foods?.[0]) {
+        const filteredData = mapUSDAFoodToCleanFoodItem(response.foods[0]);
+        console.log('filteredData', filteredData);
+      }
+
       const allFoodItems = mapUSDASearchResponseToCleanFoods(response);
-      console.log("allFoodItems", allFoodItems);
+      console.log('allFoodItems', allFoodItems);
     }
 
     testApi();
