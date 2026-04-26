@@ -1,6 +1,7 @@
 import { Alert, ScrollView, StyleSheet } from 'react-native';
 import DailySummary from '@/components/Tracker/DailySummary';
 import MealsRow from '@/components/Tracker/MealsRow';
+import FoodEntryItem from '@/components/Tracker/FoodEntryItem';
 import { SPACING } from '@/constants/theme';
 import { USDA, type CleanFoodItem } from '@/lib/usda';
 import { ThemedText } from '@/components/Shared/ThemedText';
@@ -67,7 +68,6 @@ const MEAL_CALORIE_SPLITS: Record<MealType, number> = {
 };
 
 // Computes the current consumed calories and macros from the day's food entries.
-// This keeps the DailySummary math in one place and easy to inspect.
 function calculateNutritionTotals(entries: FoodEntryRow[]) {
   return entries.reduce(
     (totals, entry) => {
@@ -87,7 +87,6 @@ function calculateNutritionTotals(entries: FoodEntryRow[]) {
 }
 
 // Computes the current calories per meal from the selected day's food entries.
-// This lets each meal row reflect real saved data instead of hardcoded numbers.
 function calculateMealCalories(entries: FoodEntryRow[]) {
   return entries.reduce(
     (totals, entry) => {
@@ -100,6 +99,23 @@ function calculateMealCalories(entries: FoodEntryRow[]) {
       Dinner: 0,
       Snacks: 0,
     } as Record<MealType, number>
+  );
+}
+
+// Groups food entries by meal type so the UI can render them under each meal section.
+// Because the DB query already sorts by created_at ascending, this preserves that order.
+function groupFoodEntriesByMeal(entries: FoodEntryRow[]) {
+  return entries.reduce(
+    (groups, entry) => {
+      groups[entry.meal_type].push(entry);
+      return groups;
+    },
+    {
+      Breakfast: [],
+      Lunch: [],
+      Dinner: [],
+      Snacks: [],
+    } as Record<MealType, FoodEntryRow[]>
   );
 }
 
@@ -119,27 +135,25 @@ const TrackerScreen = function () {
   const [defaultTargets, setDefaultTargets] = useState<DailyLogTargetsInput | null>(null);
 
   // Stores the selected day's current food entries.
-  // We use these to derive real consumed calories and macros.
   const [foodEntries, setFoodEntries] = useState<FoodEntryRow[]>([]);
 
   // Tracks whether the selected date is currently loading.
-  // Useful now for discipline, even if we are not rendering a loading UI yet.
   const [isDayLoading, setIsDayLoading] = useState(false);
 
-  // Opens the modal and remembers which meal triggered it.
   function openSearchModal(mealLabel: MealType) {
     setActiveMeal(mealLabel);
     setIsSearchModalVisible(true);
   }
 
-  // Closes the modal.
   function closeSearchModal() {
     setIsSearchModalVisible(false);
   }
 
-  // Loads one selected day's log and food entries.
-  // Important: viewing a date should not create a daily_log.
-  // We only fetch what exists and show an empty day if nothing exists yet.
+  // Placeholder for future edit/delete actions.
+  function handlePressFoodEntryMore(entry: FoodEntryRow) {
+    console.log('More actions for entry:', entry);
+  }
+
   async function loadSelectedDayData() {
     try {
       if (!session?.user?.id) {
@@ -152,8 +166,6 @@ const TrackerScreen = function () {
       const selectedDateString = formatDateForDatabase(selectedDate);
       const dailyLog = await getDailyLogByDate(session.user.id, selectedDateString);
 
-      // If no daily log exists yet for this date, that simply means
-      // the day has no saved data so far.
       if (!dailyLog) {
         setFoodEntries([]);
         return;
@@ -169,8 +181,6 @@ const TrackerScreen = function () {
     }
   }
 
-  // Loads the user's current default targets from profiles.
-  // For now, these drive the target values shown in DailySummary.
   useEffect(() => {
     async function loadDefaultTargets() {
       try {
@@ -188,19 +198,10 @@ const TrackerScreen = function () {
     loadDefaultTargets();
   }, [session?.user?.id]);
 
-  // Reloads the selected day's existing saved data whenever:
-  // - the signed-in user changes
-  // - the selected date changes
   useEffect(() => {
     loadSelectedDayData();
   }, [session?.user?.id, selectedDate]);
 
-  // First end-to-end add-food flow:
-  // 1. Make sure we have an authenticated user
-  // 2. Get or create the selected day's daily_log
-  // 3. Insert the food entry under that daily_log
-  // 4. Refresh the selected day so the UI updates from real DB data
-  // 5. Close the modal if successful
   async function handleAddFood(food: CleanFoodItem) {
     try {
       if (!session?.user?.id) {
@@ -232,9 +233,7 @@ const TrackerScreen = function () {
 
       console.log('Inserted food entry:', insertedFoodEntry);
 
-      // Pull fresh data from the database so the summary reflects the new entry.
       await loadSelectedDayData();
-
       closeSearchModal();
     } catch (error) {
       console.error('Error adding food:', error);
@@ -259,9 +258,9 @@ const TrackerScreen = function () {
     testApi();
   }, []);
 
-  // Derive real summary values from the day's saved food entries.
   const nutritionTotals = calculateNutritionTotals(foodEntries);
   const mealCalories = calculateMealCalories(foodEntries);
+  const groupedFoodEntries = groupFoodEntriesByMeal(foodEntries);
   const defaultTargetCalories = defaultTargets?.targetCalories ?? 0;
 
   return (
@@ -272,13 +271,10 @@ const TrackerScreen = function () {
       >
         <ThemedText style={styles.headerText}>Tracker Page</ThemedText>
 
-        {/* This label makes the currently selected day explicit. */}
         <ThemedText variant="textMuted" style={styles.dateLabel}>
           {formatSelectedDate(selectedDate)}
         </ThemedText>
 
-        {/* The date swiper is a dumb UI component.
-            It only displays dates and notifies the screen when one is selected. */}
         <DateSwiper
           selectedDate={selectedDate}
           onSelectDate={setSelectedDate}
@@ -314,6 +310,13 @@ const TrackerScreen = function () {
           iconName="cafe"
           onAddPress={() => openSearchModal('Breakfast')}
         />
+        {groupedFoodEntries.Breakfast.map((entry) => (
+          <FoodEntryItem
+            key={entry.id}
+            entry={entry}
+            onPressMore={handlePressFoodEntryMore}
+          />
+        ))}
 
         <MealsRow
           title="Lunch"
@@ -322,6 +325,13 @@ const TrackerScreen = function () {
           iconName="fast-food"
           onAddPress={() => openSearchModal('Lunch')}
         />
+        {groupedFoodEntries.Lunch.map((entry) => (
+          <FoodEntryItem
+            key={entry.id}
+            entry={entry}
+            onPressMore={handlePressFoodEntryMore}
+          />
+        ))}
 
         <MealsRow
           title="Dinner"
@@ -330,6 +340,13 @@ const TrackerScreen = function () {
           iconName="restaurant"
           onAddPress={() => openSearchModal('Dinner')}
         />
+        {groupedFoodEntries.Dinner.map((entry) => (
+          <FoodEntryItem
+            key={entry.id}
+            entry={entry}
+            onPressMore={handlePressFoodEntryMore}
+          />
+        ))}
 
         <MealsRow
           title="Snacks"
@@ -338,6 +355,13 @@ const TrackerScreen = function () {
           iconName="fast-food"
           onAddPress={() => openSearchModal('Snacks')}
         />
+        {groupedFoodEntries.Snacks.map((entry) => (
+          <FoodEntryItem
+            key={entry.id}
+            entry={entry}
+            onPressMore={handlePressFoodEntryMore}
+          />
+        ))}
       </ScrollView>
 
       <SearchModal
