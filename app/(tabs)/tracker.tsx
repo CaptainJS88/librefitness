@@ -57,6 +57,15 @@ function roundToOneDecimal(value: number) {
   return Math.round(value * 10) / 10;
 }
 
+// Temporary calorie split for meal rows.
+// We can make this user-configurable later if needed.
+const MEAL_CALORIE_SPLITS: Record<MealType, number> = {
+  Breakfast: 0.3,
+  Lunch: 0.4,
+  Dinner: 0.2,
+  Snacks: 0.1,
+};
+
 // Computes the current consumed calories and macros from the day's food entries.
 // This keeps the DailySummary math in one place and easy to inspect.
 function calculateNutritionTotals(entries: FoodEntryRow[]) {
@@ -74,6 +83,23 @@ function calculateNutritionTotals(entries: FoodEntryRow[]) {
       carbs: 0,
       fat: 0,
     }
+  );
+}
+
+// Computes the current calories per meal from the selected day's food entries.
+// This lets each meal row reflect real saved data instead of hardcoded numbers.
+function calculateMealCalories(entries: FoodEntryRow[]) {
+  return entries.reduce(
+    (totals, entry) => {
+      totals[entry.meal_type] += entry.calories;
+      return totals;
+    },
+    {
+      Breakfast: 0,
+      Lunch: 0,
+      Dinner: 0,
+      Snacks: 0,
+    } as Record<MealType, number>
   );
 }
 
@@ -235,6 +261,8 @@ const TrackerScreen = function () {
 
   // Derive real summary values from the day's saved food entries.
   const nutritionTotals = calculateNutritionTotals(foodEntries);
+  const mealCalories = calculateMealCalories(foodEntries);
+  const defaultTargetCalories = defaultTargets?.targetCalories ?? 0;
 
   return (
     <ThemedView variant="background" style={styles.screen}>
@@ -258,7 +286,7 @@ const TrackerScreen = function () {
 
         <DailySummary
           dietName="Mediterranean Diet"
-          targetCalories={defaultTargets?.targetCalories ?? 0}
+          targetCalories={defaultTargetCalories}
           consumedCalories={roundToOneDecimal(nutritionTotals.calories)}
           burnedCalories={0}
           carbs={{
@@ -281,32 +309,32 @@ const TrackerScreen = function () {
 
         <MealsRow
           title="Breakfast"
-          currentCalories={600}
-          maxCalories={625}
+          currentCalories={roundToOneDecimal(mealCalories.Breakfast)}
+          maxCalories={Math.round(defaultTargetCalories * MEAL_CALORIE_SPLITS.Breakfast)}
           iconName="cafe"
           onAddPress={() => openSearchModal('Breakfast')}
         />
 
         <MealsRow
           title="Lunch"
-          currentCalories={640}
-          maxCalories={750}
+          currentCalories={roundToOneDecimal(mealCalories.Lunch)}
+          maxCalories={Math.round(defaultTargetCalories * MEAL_CALORIE_SPLITS.Lunch)}
           iconName="fast-food"
           onAddPress={() => openSearchModal('Lunch')}
         />
 
         <MealsRow
           title="Dinner"
-          currentCalories={0}
-          maxCalories={725}
+          currentCalories={roundToOneDecimal(mealCalories.Dinner)}
+          maxCalories={Math.round(defaultTargetCalories * MEAL_CALORIE_SPLITS.Dinner)}
           iconName="restaurant"
           onAddPress={() => openSearchModal('Dinner')}
         />
 
         <MealsRow
           title="Snacks"
-          currentCalories={100}
-          maxCalories={300}
+          currentCalories={roundToOneDecimal(mealCalories.Snacks)}
+          maxCalories={Math.round(defaultTargetCalories * MEAL_CALORIE_SPLITS.Snacks)}
           iconName="fast-food"
           onAddPress={() => openSearchModal('Snacks')}
         />
