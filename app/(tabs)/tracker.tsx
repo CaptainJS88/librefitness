@@ -202,7 +202,10 @@ const TrackerScreen = function () {
     loadSelectedDayData();
   }, [session?.user?.id, selectedDate]);
 
-  async function handleAddFood(food: CleanFoodItem) {
+  async function handleAddFood(
+    food: CleanFoodItem,
+    quantityMultiplier: number
+  ) {
     try {
       if (!session?.user?.id) {
         Alert.alert('Not signed in', 'You must be signed in to add food.');
@@ -221,20 +224,21 @@ const TrackerScreen = function () {
         mealType: activeMeal,
         usdaFoodId: food.fdcId,
         foodName: food.description,
-        servingSizeValue: food.servingSize,
+        servingSizeValue: roundToOneDecimal(food.servingSize * quantityMultiplier),
         servingSizeUnit: food.servingSizeUnit,
         servingWeightGrams:
-          food.servingSizeUnit.toLowerCase() === 'g' ? food.servingSize : null,
-        calories: food.calories,
-        protein: food.protein,
-        carbs: food.carbs,
-        fat: food.fat,
+          food.servingSizeUnit.toLowerCase() === 'g'
+            ? roundToOneDecimal(food.servingSize * quantityMultiplier)
+            : null,
+        calories: roundToOneDecimal(food.calories * quantityMultiplier),
+        protein: roundToOneDecimal(food.protein * quantityMultiplier),
+        carbs: roundToOneDecimal(food.carbs * quantityMultiplier),
+        fat: roundToOneDecimal(food.fat * quantityMultiplier),
       });
 
       console.log('Inserted food entry:', insertedFoodEntry);
 
       await loadSelectedDayData();
-      closeSearchModal();
     } catch (error) {
       console.error('Error adding food:', error);
       Alert.alert('Error', 'Unable to add food right now.');

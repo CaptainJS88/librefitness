@@ -20,9 +20,12 @@ type SearchModalProps = {
   visible: boolean;
   mealLabel: string;
   onClose: () => void;
-  onAddFood: (food: CleanFoodItem) => void;
+  onAddFood: (food: CleanFoodItem, quantityMultiplier: number) => Promise<void>;
   pageSize?: number;
 };
+
+const QUANTITY_STEP = 0.5;
+const MIN_QUANTITY = 0.1;
 
 // Small helper so the serving line stays readable in the UI.
 function formatServing(food: CleanFoodItem) {
@@ -43,10 +46,13 @@ export default function SearchModal({
   const [query, setQuery] = useState('');
   const [debouncedQuery, setDebouncedQuery] = useState('');
 
-  // These states drive the modal UI.
+  // These states drive the search list and the inline quantity editor.
   const [results, setResults] = useState<CleanFoodItem[]>([]);
   const [isSearching, setIsSearching] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [expandedFoodId, setExpandedFoodId] = useState<number | null>(null);
+  const [quantityInput, setQuantityInput] = useState('1');
+  const [isSubmittingFoodId, setIsSubmittingFoodId] = useState<number | null>(null);
 
   // When the modal closes, reset its internal state.
   // That keeps each modal session feeling fresh and predictable.
@@ -57,6 +63,9 @@ export default function SearchModal({
       setResults([]);
       setError(null);
       setIsSearching(false);
+      setExpandedFoodId(null);
+      setQuantityInput('1');
+      setIsSubmittingFoodId(null);
     }
   }, [visible]);
 
@@ -122,34 +131,185 @@ export default function SearchModal({
     };
   }, [debouncedQuery, visible, pageSize]);
 
+  // Parses the current quantity input into a usable positive decimal.
+  // We use null to signal invalid input and disable the done button.
+  function parseQuantity(value: string) {
+    const parsed = Number(value);
+
+    if (!Number.isFinite(parsed) || parsed <= 0) {
+      return null;
+    }
+
+    return parsed;
+  }
+
+  // Keeps stepper output tidy and avoids long floating point strings.
+  function formatQuantityValue(value: number) {
+    return Number(value.toFixed(2)).toString();
+  }
+
+  // Expands one food row at a time.
+  function toggleExpandedFood(foodId: number) {
+    if (expandedFoodId === foodId) {
+      setExpandedFoodId(null);
+      setQuantityInput('1');
+      return;
+    }
+
+    setExpandedFoodId(foodId);
+    setQuantityInput('1');
+  }
+
+  // Adjusts the quantity with small stepper buttons.
+  // Users can still type any decimal manually in the center input.
+  function adjustQuantity(delta: number) {
+    const currentQuantity = parseQuantity(quantityInput) ?? 1;
+    const nextQuantity = Math.max(MIN_QUANTITY, currentQuantity + delta);
+    setQuantityInput(formatQuantityValue(nextQuantity));
+  }
+
+  // Computes the preview values shown before a food is committed.
+  function getScaledNutrition(food: CleanFoodItem, quantityMultiplier: number) {
+    return {
+      calories: Number((food.calories * quantityMultiplier).toFixed(1)),
+      protein: Number((food.protein * quantityMultiplier).toFixed(1)),
+      carbs: Number((food.carbs * quantityMultiplier).toFixed(1)),
+      fat: Number((food.fat * quantityMultiplier).toFixed(1)),
+      servingAmount: Number((food.servingSize * quantityMultiplier).toFixed(1)),
+    };
+  }
+
+  // Adds the selected food with the chosen quantity multiplier.
+  // We intentionally keep the modal open afterward so users can keep logging.
+  async function handleConfirmAddFood(food: CleanFoodItem) {
+    const quantityMultiplier = parseQuantity(quantityInput);
+
+    if (quantityMultiplier == null) {
+      return;
+    }
+
+    try {
+      setIsSubmittingFoodId(food.fdcId);
+      await onAddFood(food, quantityMultiplier);
+      setExpandedFoodId(null);
+      setQuantityInput('1');
+    } catch (error) {
+      console.error('Error confirming food addition:', error);
+    } finally {
+      setIsSubmittingFoodId(null);
+    }
+  }
+
   // Renders one normalized food result row.
   function renderFoodItem({ item }: { item: CleanFoodItem }) {
+    const isExpanded = expandedFoodId === item.fdcId;
+    const parsedQuantity = parseQuantity(quantityInput);
+    const quantityPreview = parsedQuantity ?? 1;
+    const scaledNutrition = getScaledNutrition(item, quantityPreview);
+
     return (
-      <ThemedView variant="surface" style={styles.resultRow}>
-        <View style={styles.resultTextBlock}>
-          <ThemedText style={styles.foodTitle}>{item.description}</ThemedText>
+      <ThemedView variant="surface" style={styles.resultCard}>
+        <ThemedView style={styles.resultRow}>
+          <View style={styles.resultTextBlock}>
+            <ThemedText style={styles.foodTitle}>{item.description}</ThemedText>
 
-          {item.brandOwner ? (
-            <ThemedText variant="textMuted" style={styles.brandText}>
-              {item.brandOwner}
+            {item.brandOwner ? (
+              <ThemedText variant="textMuted" style={styles.brandText}>
+                {item.brandOwner}
+              </ThemedText>
+            ) : null}
+
+            <ThemedText variant="textMuted" style={styles.metaText}>
+              {item.calories} kcal • {item.protein}P • {item.carbs}C • {item.fat}F
             </ThemedText>
-          ) : null}
 
-          <ThemedText variant="textMuted" style={styles.metaText}>
-            {item.calories} kcal • {item.protein}P • {item.carbs}C • {item.fat}F
-          </ThemedText>
+            <ThemedText variant="textMuted" style={styles.metaText}>
+              Serving Size: {formatServing(item)}
+            </ThemedText>
+          </View>
 
-          <ThemedText variant="textMuted" style={styles.metaText}>
-            Serving: {formatServing(item)}
-          </ThemedText>
-        </View>
+          <TouchableOpacity
+            style={[styles.addButton, { backgroundColor: colors.primary }]}
+            onPress={() => toggleExpandedFood(item.fdcId)}
+          >
+            <Icon
+              name={isExpanded ? 'chevron-down' : 'add'}
+              size={22}
+              color={colors.buttonText}
+            />
+          </TouchableOpacity>
+        </ThemedView>
 
-        <TouchableOpacity
-          style={[styles.addButton, { backgroundColor: colors.primary }]}
-          onPress={() => onAddFood(item)}
-        >
-          <Icon name="add" size={22} color={colors.buttonText} />
-        </TouchableOpacity>
+        {isExpanded ? (
+          <ThemedView
+            style={[styles.expandedPanel, { borderTopColor: colors.border }]}
+          >
+            <ThemedText variant="textMuted" style={styles.expandedHelperText}>
+              Quantity multiplier for {formatServing(item)}
+            </ThemedText>
+
+            <ThemedView style={styles.quantityRow}>
+              <TouchableOpacity
+                style={[styles.stepButton, { borderColor: colors.border }]}
+                onPress={() => adjustQuantity(-QUANTITY_STEP)}
+              >
+                <Icon name="remove" size={18} color={colors.text} />
+              </TouchableOpacity>
+
+              <TextInput
+                value={quantityInput}
+                onChangeText={setQuantityInput}
+                keyboardType="decimal-pad"
+                style={[
+                  styles.quantityInput,
+                  {
+                    color: colors.text,
+                    backgroundColor: colors.background,
+                    borderColor: colors.border,
+                  },
+                ]}
+              />
+
+              <TouchableOpacity
+                style={[styles.stepButton, { borderColor: colors.border }]}
+                onPress={() => adjustQuantity(QUANTITY_STEP)}
+              >
+                <Icon name="add" size={18} color={colors.text} />
+              </TouchableOpacity>
+            </ThemedView>
+
+            <ThemedText variant="textMuted" style={styles.previewText}>
+              {scaledNutrition.servingAmount} {item.servingSizeUnit} • {scaledNutrition.calories} kcal
+            </ThemedText>
+            <ThemedText variant="textMuted" style={styles.previewText}>
+              {scaledNutrition.protein}P • {scaledNutrition.carbs}C • {scaledNutrition.fat}F
+            </ThemedText>
+
+            <TouchableOpacity
+              style={[
+                styles.doneButton,
+                {
+                  backgroundColor:
+                    parsedQuantity == null || isSubmittingFoodId === item.fdcId
+                      ? colors.border
+                      : colors.primary,
+                },
+              ]}
+              disabled={parsedQuantity == null || isSubmittingFoodId === item.fdcId}
+              onPress={() => handleConfirmAddFood(item)}
+            >
+              {isSubmittingFoodId === item.fdcId ? (
+                <ActivityIndicator size="small" color={colors.buttonText} />
+              ) : (
+                <ThemedText
+                  style={[styles.doneButtonText, { color: colors.buttonText }]}
+                >
+                  Done
+                </ThemedText>
+              )}
+            </TouchableOpacity>
+          </ThemedView>
+        ) : null}
       </ThemedView>
     );
   }
@@ -314,12 +474,14 @@ const styles = StyleSheet.create({
   listContent: {
     paddingBottom: SPACING.xl,
   },
+  resultCard: {
+    borderRadius: 18,
+    marginBottom: SPACING.sm,
+  },
   resultRow: {
     flexDirection: 'row',
     alignItems: 'center',
     padding: SPACING.md,
-    borderRadius: 18,
-    marginBottom: SPACING.sm,
   },
   resultTextBlock: {
     flex: 1,
@@ -343,6 +505,54 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  expandedPanel: {
+    borderTopWidth: 1,
+    paddingHorizontal: SPACING.md,
+    paddingTop: SPACING.md,
+    paddingBottom: SPACING.md,
+  },
+  expandedHelperText: {
+    fontSize: 13,
+    marginBottom: SPACING.sm,
+  },
+  quantityRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: SPACING.sm,
+  },
+  stepButton: {
+    width: 42,
+    height: 42,
+    borderWidth: 1,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  quantityInput: {
+    flex: 1,
+    height: 42,
+    borderWidth: 1,
+    borderRadius: 12,
+    marginHorizontal: SPACING.sm,
+    textAlign: 'center',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  previewText: {
+    fontSize: 13,
+    marginBottom: 4,
+  },
+  doneButton: {
+    marginTop: SPACING.sm,
+    paddingVertical: 12,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  doneButtonText: {
+    fontSize: 15,
+    fontWeight: '700',
   },
   stateContainer: {
     paddingTop: SPACING.xl,
