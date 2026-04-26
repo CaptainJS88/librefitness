@@ -208,109 +208,111 @@ export default function SearchModal({
     const scaledNutrition = getScaledNutrition(item, quantityPreview);
 
     return (
-      <ThemedView variant="surface" style={styles.resultCard}>
-        <ThemedView style={styles.resultRow}>
-          <View style={styles.resultTextBlock}>
-            <ThemedText style={styles.foodTitle}>{item.description}</ThemedText>
+      <View style={styles.resultCard}>
+        <ThemedView variant="surface" style={styles.resultCardInner}>
+          <ThemedView style={styles.resultRow}>
+            <View style={styles.resultTextBlock}>
+              <ThemedText style={styles.foodTitle}>{item.description}</ThemedText>
 
-            {item.brandOwner ? (
-              <ThemedText variant="textMuted" style={styles.brandText}>
-                {item.brandOwner}
+              {item.brandOwner ? (
+                <ThemedText variant="textMuted" style={styles.brandText}>
+                  {item.brandOwner}
+                </ThemedText>
+              ) : null}
+
+              <ThemedText variant="textMuted" style={styles.metaText}>
+                {item.calories} kcal • {item.protein}P • {item.carbs}C • {item.fat}F
               </ThemedText>
-            ) : null}
 
-            <ThemedText variant="textMuted" style={styles.metaText}>
-              {item.calories} kcal • {item.protein}P • {item.carbs}C • {item.fat}F
-            </ThemedText>
-
-            <ThemedText variant="textMuted" style={styles.metaText}>
-              Serving Size: {formatServing(item)}
-            </ThemedText>
-          </View>
-
-          <TouchableOpacity
-            style={[styles.addButton, { backgroundColor: colors.primary }]}
-            onPress={() => toggleExpandedFood(item.fdcId)}
-          >
-            <Icon
-              name={isExpanded ? 'chevron-down' : 'add'}
-              size={22}
-              color={colors.buttonText}
-            />
-          </TouchableOpacity>
-        </ThemedView>
-
-        {isExpanded ? (
-          <ThemedView
-            style={[styles.expandedPanel, { borderTopColor: colors.border }]}
-          >
-            <ThemedText variant="textMuted" style={styles.expandedHelperText}>
-              Quantity multiplier for {formatServing(item)}
-            </ThemedText>
-
-            <ThemedView style={styles.quantityRow}>
-              <TouchableOpacity
-                style={[styles.stepButton, { borderColor: colors.border }]}
-                onPress={() => adjustQuantity(-QUANTITY_STEP)}
-              >
-                <Icon name="remove" size={18} color={colors.text} />
-              </TouchableOpacity>
-
-              <TextInput
-                value={quantityInput}
-                onChangeText={setQuantityInput}
-                keyboardType="decimal-pad"
-                style={[
-                  styles.quantityInput,
-                  {
-                    color: colors.text,
-                    backgroundColor: colors.background,
-                    borderColor: colors.border,
-                  },
-                ]}
-              />
-
-              <TouchableOpacity
-                style={[styles.stepButton, { borderColor: colors.border }]}
-                onPress={() => adjustQuantity(QUANTITY_STEP)}
-              >
-                <Icon name="add" size={18} color={colors.text} />
-              </TouchableOpacity>
-            </ThemedView>
-
-            <ThemedText variant="textMuted" style={styles.previewText}>
-              {scaledNutrition.servingAmount} {item.servingSizeUnit} • {scaledNutrition.calories} kcal
-            </ThemedText>
-            <ThemedText variant="textMuted" style={styles.previewText}>
-              {scaledNutrition.protein}P • {scaledNutrition.carbs}C • {scaledNutrition.fat}F
-            </ThemedText>
+              <ThemedText variant="textMuted" style={styles.metaText}>
+                Serving Size: {formatServing(item)}
+              </ThemedText>
+            </View>
 
             <TouchableOpacity
-              style={[
-                styles.doneButton,
-                {
-                  backgroundColor:
-                    parsedQuantity == null || isSubmittingFoodId === item.fdcId
-                      ? colors.border
-                      : colors.primary,
-                },
-              ]}
-              disabled={parsedQuantity == null || isSubmittingFoodId === item.fdcId}
-              onPress={() => handleConfirmAddFood(item)}
+              style={[styles.addButton, { backgroundColor: colors.primary }]}
+              onPress={() => toggleExpandedFood(item.fdcId)}
             >
-              {isSubmittingFoodId === item.fdcId ? (
-                <ActivityIndicator size="small" color={colors.buttonText} />
-              ) : (
-                <ThemedText
-                  style={[styles.doneButtonText, { color: colors.buttonText }]}
-                >
-                  Done
-                </ThemedText>
-              )}
+              <Icon
+                name={isExpanded ? 'chevron-down' : 'add'}
+                size={22}
+                color={colors.buttonText}
+              />
             </TouchableOpacity>
           </ThemedView>
-        ) : null}
-      </ThemedView>
+
+          {isExpanded ? (
+            <ThemedView
+              style={[styles.expandedPanel, { borderTopColor: colors.border }]}
+            >
+              <ThemedText variant="textMuted" style={styles.expandedHelperText}>
+                Quantity multiplier for {formatServing(item)}
+              </ThemedText>
+
+              <ThemedView style={styles.quantityRow}>
+                <TouchableOpacity
+                  style={[styles.stepButton, { borderColor: colors.border }]}
+                  onPress={() => adjustQuantity(-QUANTITY_STEP)}
+                >
+                  <Icon name="remove" size={18} color={colors.text} />
+                </TouchableOpacity>
+
+                <TextInput
+                  value={quantityInput}
+                  onChangeText={setQuantityInput}
+                  keyboardType="decimal-pad"
+                  style={[
+                    styles.quantityInput,
+                    {
+                      color: colors.text,
+                      backgroundColor: colors.background,
+                      borderColor: colors.border,
+                    },
+                  ]}
+                />
+
+                <TouchableOpacity
+                  style={[styles.stepButton, { borderColor: colors.border }]}
+                  onPress={() => adjustQuantity(QUANTITY_STEP)}
+                >
+                  <Icon name="add" size={18} color={colors.text} />
+                </TouchableOpacity>
+              </ThemedView>
+
+              <ThemedText variant="textMuted" style={styles.previewText}>
+                {scaledNutrition.servingAmount} {item.servingSizeUnit} • {scaledNutrition.calories} kcal
+              </ThemedText>
+              <ThemedText variant="textMuted" style={styles.previewText}>
+                {scaledNutrition.protein}P • {scaledNutrition.carbs}C • {scaledNutrition.fat}F
+              </ThemedText>
+
+              <TouchableOpacity
+                style={[
+                  styles.doneButton,
+                  {
+                    backgroundColor:
+                      parsedQuantity == null || isSubmittingFoodId === item.fdcId
+                        ? colors.border
+                        : colors.primary,
+                  },
+                ]}
+                disabled={parsedQuantity == null || isSubmittingFoodId === item.fdcId}
+                onPress={() => handleConfirmAddFood(item)}
+              >
+                {isSubmittingFoodId === item.fdcId ? (
+                  <ActivityIndicator size="small" color={colors.buttonText} />
+                ) : (
+                  <ThemedText
+                    style={[styles.doneButtonText, { color: colors.buttonText }]}
+                  >
+                    Done
+                  </ThemedText>
+                )}
+              </TouchableOpacity>
+            </ThemedView>
+          ) : null}
+        </ThemedView>
+      </View>
     );
   }
 
@@ -362,6 +364,7 @@ export default function SearchModal({
         data={results}
         keyExtractor={(item) => item.fdcId.toString()}
         renderItem={renderFoodItem}
+        keyboardShouldPersistTaps="always"
         contentContainerStyle={styles.listContent}
         showsVerticalScrollIndicator={false}
       />
@@ -475,8 +478,10 @@ const styles = StyleSheet.create({
     paddingBottom: SPACING.xl,
   },
   resultCard: {
-    borderRadius: 18,
     marginBottom: SPACING.sm,
+  },
+  resultCardInner: {
+    borderRadius: 18,
   },
   resultRow: {
     flexDirection: 'row',
