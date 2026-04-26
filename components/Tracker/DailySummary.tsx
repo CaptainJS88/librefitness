@@ -70,6 +70,8 @@ export default function DailySummary({
   const { colors } = useAppTheme();
 
   const caloriesLeft = targetCalories - consumedCalories + burnedCalories;
+  const isOverTarget = caloriesLeft < 0;
+  const displayCaloriesDelta = Math.abs(caloriesLeft);
   const ringFill =
     targetCalories > 0
       ? Math.min((consumedCalories / targetCalories) * 100, 100)
@@ -131,9 +133,15 @@ export default function DailySummary({
           >
             {() => (
               <ThemedView style={styles.ringInner}>
-                <ThemedText style={styles.ringNumber}>{caloriesLeft}</ThemedText>
-                <ThemedText variant="textMuted" style={styles.ringLabel}>
-                  Left
+                <ThemedText style={styles.ringNumber}>{displayCaloriesDelta}</ThemedText>
+                <ThemedText
+                  variant="textMuted"
+                  style={[
+                    styles.ringLabel,
+                    isOverTarget ? { color: colors.danger } : null,
+                  ]}
+                >
+                  {isOverTarget ? 'Over' : 'Left'}
                 </ThemedText>
               </ThemedView>
             )}
