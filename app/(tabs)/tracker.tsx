@@ -22,9 +22,11 @@ import {
 } from '@/lib/dailyLogs';
 import {
   addFoodEntry,
+  deleteFoodEntry,
   getFoodEntriesForDailyLog,
   type FoodEntryRow,
   type MealType,
+  updateFoodEntry,
 } from '@/lib/foodEntries';
 
 // Normalizes a Date to local midnight.
@@ -149,9 +151,38 @@ const TrackerScreen = function () {
     setIsSearchModalVisible(false);
   }
 
-  // Placeholder for future edit/delete actions.
-  function handlePressFoodEntryMore(entry: FoodEntryRow) {
-    console.log('More actions for entry:', entry);
+  // Updates one existing food entry by scaling calories/macros to match
+  // the new serving amount entered by the user.
+  async function handleUpdateFoodEntry(
+    entry: FoodEntryRow,
+    nextServingSizeValue: number
+  ) {
+    const currentServingSizeValue =
+      entry.serving_size_value && entry.serving_size_value > 0
+        ? entry.serving_size_value
+        : 1;
+
+    const ratio = nextServingSizeValue / currentServingSizeValue;
+
+    await updateFoodEntry(entry.id, {
+      servingSizeValue: roundToOneDecimal(nextServingSizeValue),
+      servingWeightGrams:
+        entry.serving_weight_grams != null
+          ? roundToOneDecimal(entry.serving_weight_grams * ratio)
+          : null,
+      calories: roundToOneDecimal(entry.calories * ratio),
+      protein: roundToOneDecimal(entry.protein * ratio),
+      carbs: roundToOneDecimal(entry.carbs * ratio),
+      fat: roundToOneDecimal(entry.fat * ratio),
+    });
+
+    await loadSelectedDayData();
+  }
+
+  // Deletes one existing food entry, then refreshes the selected day.
+  async function handleDeleteFoodEntry(entry: FoodEntryRow) {
+    await deleteFoodEntry(entry.id);
+    await loadSelectedDayData();
   }
 
   async function loadSelectedDayData() {
@@ -318,7 +349,8 @@ const TrackerScreen = function () {
           <FoodEntryItem
             key={entry.id}
             entry={entry}
-            onPressMore={handlePressFoodEntryMore}
+            onUpdateEntry={handleUpdateFoodEntry}
+            onDeleteEntry={handleDeleteFoodEntry}
           />
         ))}
 
@@ -333,7 +365,8 @@ const TrackerScreen = function () {
           <FoodEntryItem
             key={entry.id}
             entry={entry}
-            onPressMore={handlePressFoodEntryMore}
+            onUpdateEntry={handleUpdateFoodEntry}
+            onDeleteEntry={handleDeleteFoodEntry}
           />
         ))}
 
@@ -348,7 +381,8 @@ const TrackerScreen = function () {
           <FoodEntryItem
             key={entry.id}
             entry={entry}
-            onPressMore={handlePressFoodEntryMore}
+            onUpdateEntry={handleUpdateFoodEntry}
+            onDeleteEntry={handleDeleteFoodEntry}
           />
         ))}
 
@@ -363,7 +397,8 @@ const TrackerScreen = function () {
           <FoodEntryItem
             key={entry.id}
             entry={entry}
-            onPressMore={handlePressFoodEntryMore}
+            onUpdateEntry={handleUpdateFoodEntry}
+            onDeleteEntry={handleDeleteFoodEntry}
           />
         ))}
       </ScrollView>

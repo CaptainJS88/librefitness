@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react';
 import {
-  ActivityIndicator,
   FlatList,
   Modal,
   StyleSheet,
@@ -13,6 +12,7 @@ import { useAppTheme } from '@/hooks/useAppTheme';
 import { USDA, type CleanFoodItem } from '@/lib/usda';
 import { mapUSDASearchResponseToCleanFoods } from '@/lib/usda.mapper';
 import Icon from '@/components/Shared/Icon';
+import QuantityEditor from './QuantityEditor';
 import { ThemedText } from '../Shared/ThemedText';
 import { ThemedView } from '../Shared/ThemedView';
 
@@ -242,74 +242,21 @@ export default function SearchModal({
           </ThemedView>
 
           {isExpanded ? (
-            <ThemedView
-              style={[styles.expandedPanel, { borderTopColor: colors.border }]}
-            >
-              <ThemedText variant="textMuted" style={styles.expandedHelperText}>
-                Quantity multiplier for {formatServing(item)}
-              </ThemedText>
-
-              <ThemedView style={styles.quantityRow}>
-                <TouchableOpacity
-                  style={[styles.stepButton, { borderColor: colors.border }]}
-                  onPress={() => adjustQuantity(-QUANTITY_STEP)}
-                >
-                  <Icon name="remove" size={18} color={colors.text} />
-                </TouchableOpacity>
-
-                <TextInput
-                  value={quantityInput}
-                  onChangeText={setQuantityInput}
-                  keyboardType="decimal-pad"
-                  style={[
-                    styles.quantityInput,
-                    {
-                      color: colors.text,
-                      backgroundColor: colors.background,
-                      borderColor: colors.border,
-                    },
-                  ]}
-                />
-
-                <TouchableOpacity
-                  style={[styles.stepButton, { borderColor: colors.border }]}
-                  onPress={() => adjustQuantity(QUANTITY_STEP)}
-                >
-                  <Icon name="add" size={18} color={colors.text} />
-                </TouchableOpacity>
-              </ThemedView>
-
-              <ThemedText variant="textMuted" style={styles.previewText}>
-                {scaledNutrition.servingAmount} {item.servingSizeUnit} • {scaledNutrition.calories} kcal
-              </ThemedText>
-              <ThemedText variant="textMuted" style={styles.previewText}>
-                {scaledNutrition.protein}P • {scaledNutrition.carbs}C • {scaledNutrition.fat}F
-              </ThemedText>
-
-              <TouchableOpacity
-                style={[
-                  styles.doneButton,
-                  {
-                    backgroundColor:
-                      parsedQuantity == null || isSubmittingFoodId === item.fdcId
-                        ? colors.border
-                        : colors.primary,
-                  },
-                ]}
-                disabled={parsedQuantity == null || isSubmittingFoodId === item.fdcId}
-                onPress={() => handleConfirmAddFood(item)}
-              >
-                {isSubmittingFoodId === item.fdcId ? (
-                  <ActivityIndicator size="small" color={colors.buttonText} />
-                ) : (
-                  <ThemedText
-                    style={[styles.doneButtonText, { color: colors.buttonText }]}
-                  >
-                    Done
-                  </ThemedText>
-                )}
-              </TouchableOpacity>
-            </ThemedView>
+            <QuantityEditor
+              helperText={`Quantity multiplier for ${formatServing(item)}`}
+              quantityInput={quantityInput}
+              onChangeQuantity={setQuantityInput}
+              onDecrement={() => adjustQuantity(-QUANTITY_STEP)}
+              onIncrement={() => adjustQuantity(QUANTITY_STEP)}
+              previewLineOne={`${scaledNutrition.servingAmount} ${item.servingSizeUnit} • ${scaledNutrition.calories} kcal`}
+              previewLineTwo={`${scaledNutrition.protein}P • ${scaledNutrition.carbs}C • ${scaledNutrition.fat}F`}
+              primaryButtonLabel="Done"
+              onPressPrimary={() => handleConfirmAddFood(item)}
+              isPrimaryDisabled={
+                parsedQuantity == null || isSubmittingFoodId === item.fdcId
+              }
+              isPrimaryLoading={isSubmittingFoodId === item.fdcId}
+            />
           ) : null}
         </ThemedView>
       </View>
@@ -510,54 +457,6 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  expandedPanel: {
-    borderTopWidth: 1,
-    paddingHorizontal: SPACING.md,
-    paddingTop: SPACING.md,
-    paddingBottom: SPACING.md,
-  },
-  expandedHelperText: {
-    fontSize: 13,
-    marginBottom: SPACING.sm,
-  },
-  quantityRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: SPACING.sm,
-  },
-  stepButton: {
-    width: 42,
-    height: 42,
-    borderWidth: 1,
-    borderRadius: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  quantityInput: {
-    flex: 1,
-    height: 42,
-    borderWidth: 1,
-    borderRadius: 12,
-    marginHorizontal: SPACING.sm,
-    textAlign: 'center',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  previewText: {
-    fontSize: 13,
-    marginBottom: 4,
-  },
-  doneButton: {
-    marginTop: SPACING.sm,
-    paddingVertical: 12,
-    borderRadius: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  doneButtonText: {
-    fontSize: 15,
-    fontWeight: '700',
   },
   stateContainer: {
     paddingTop: SPACING.xl,
