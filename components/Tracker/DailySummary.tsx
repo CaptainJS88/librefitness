@@ -71,7 +71,7 @@ export default function DailySummary({
 
   const caloriesLeft = targetCalories - consumedCalories + burnedCalories;
   const isOverTarget = caloriesLeft < 0;
-  const displayCaloriesDelta = Math.abs(caloriesLeft);
+  const displayCaloriesDelta = Math.round(Math.abs(caloriesLeft));
   const ringFill =
     targetCalories > 0
       ? Math.min((consumedCalories / targetCalories) * 100, 100)
