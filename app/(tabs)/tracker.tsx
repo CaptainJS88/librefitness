@@ -139,6 +139,9 @@ const TrackerScreen = function () {
   // Stores the selected day's current food entries.
   const [foodEntries, setFoodEntries] = useState<FoodEntryRow[]>([]);
 
+  // Only one existing food-entry editor should be open at a time.
+  const [expandedFoodEntryId, setExpandedFoodEntryId] = useState<string | null>(null);
+
   // Tracks whether the selected date is currently loading.
   const [isDayLoading, setIsDayLoading] = useState(false);
 
@@ -149,6 +152,11 @@ const TrackerScreen = function () {
 
   function closeSearchModal() {
     setIsSearchModalVisible(false);
+  }
+
+  // Tapping the same row closes it; tapping a different row switches the open editor.
+  function toggleFoodEntryEditor(entryId: string) {
+    setExpandedFoodEntryId((currentId) => (currentId === entryId ? null : entryId));
   }
 
   // Updates one existing food entry by scaling calories/macros to match
@@ -176,11 +184,13 @@ const TrackerScreen = function () {
       fat: roundToOneDecimal(entry.fat * ratio),
     });
 
+    setExpandedFoodEntryId(null);
     await loadSelectedDayData();
   }
 
   // Deletes one existing food entry, then refreshes the selected day.
   async function handleDeleteFoodEntry(entry: FoodEntryRow) {
+    setExpandedFoodEntryId(null);
     await deleteFoodEntry(entry.id);
     await loadSelectedDayData();
   }
@@ -189,6 +199,7 @@ const TrackerScreen = function () {
     try {
       if (!session?.user?.id) {
         setFoodEntries([]);
+        setExpandedFoodEntryId(null);
         return;
       }
 
@@ -199,6 +210,7 @@ const TrackerScreen = function () {
 
       if (!dailyLog) {
         setFoodEntries([]);
+        setExpandedFoodEntryId(null);
         return;
       }
 
@@ -349,6 +361,8 @@ const TrackerScreen = function () {
           <FoodEntryItem
             key={entry.id}
             entry={entry}
+            isExpanded={expandedFoodEntryId === entry.id}
+            onToggleExpanded={() => toggleFoodEntryEditor(entry.id)}
             onUpdateEntry={handleUpdateFoodEntry}
             onDeleteEntry={handleDeleteFoodEntry}
           />
@@ -365,6 +379,8 @@ const TrackerScreen = function () {
           <FoodEntryItem
             key={entry.id}
             entry={entry}
+            isExpanded={expandedFoodEntryId === entry.id}
+            onToggleExpanded={() => toggleFoodEntryEditor(entry.id)}
             onUpdateEntry={handleUpdateFoodEntry}
             onDeleteEntry={handleDeleteFoodEntry}
           />
@@ -381,6 +397,8 @@ const TrackerScreen = function () {
           <FoodEntryItem
             key={entry.id}
             entry={entry}
+            isExpanded={expandedFoodEntryId === entry.id}
+            onToggleExpanded={() => toggleFoodEntryEditor(entry.id)}
             onUpdateEntry={handleUpdateFoodEntry}
             onDeleteEntry={handleDeleteFoodEntry}
           />
@@ -397,6 +415,8 @@ const TrackerScreen = function () {
           <FoodEntryItem
             key={entry.id}
             entry={entry}
+            isExpanded={expandedFoodEntryId === entry.id}
+            onToggleExpanded={() => toggleFoodEntryEditor(entry.id)}
             onUpdateEntry={handleUpdateFoodEntry}
             onDeleteEntry={handleDeleteFoodEntry}
           />

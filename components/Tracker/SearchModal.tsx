@@ -6,6 +6,7 @@ import {
   TextInput,
   TouchableOpacity,
   View,
+  ActivityIndicator
 } from 'react-native';
 import { SPACING } from '@/constants/theme';
 import { useAppTheme } from '@/hooks/useAppTheme';
@@ -13,6 +14,11 @@ import { USDA, type CleanFoodItem } from '@/lib/usda';
 import { mapUSDASearchResponseToCleanFoods } from '@/lib/usda.mapper';
 import Icon from '@/components/Shared/Icon';
 import QuantityEditor from './QuantityEditor';
+import {
+  getNextQuantityValue,
+  parseQuantityInput,
+  QUANTITY_STEP,
+} from './quantityEditorUtils';
 import { ThemedText } from '../Shared/ThemedText';
 import { ThemedView } from '../Shared/ThemedView';
 
@@ -23,9 +29,6 @@ type SearchModalProps = {
   onAddFood: (food: CleanFoodItem, quantityMultiplier: number) => Promise<void>;
   pageSize?: number;
 };
-
-const QUANTITY_STEP = 0.5;
-const MIN_QUANTITY = 0.1;
 
 // Small helper so the serving line stays readable in the UI.
 function formatServing(food: CleanFoodItem) {
@@ -131,23 +134,6 @@ export default function SearchModal({
     };
   }, [debouncedQuery, visible, pageSize]);
 
-  // Parses the current quantity input into a usable positive decimal.
-  // We use null to signal invalid input and disable the done button.
-  function parseQuantity(value: string) {
-    const parsed = Number(value);
-
-    if (!Number.isFinite(parsed) || parsed <= 0) {
-      return null;
-    }
-
-    return parsed;
-  }
-
-  // Keeps stepper output tidy and avoids long floating point strings.
-  function formatQuantityValue(value: number) {
-    return Number(value.toFixed(2)).toString();
-  }
-
   // Expands one food row at a time.
   function toggleExpandedFood(foodId: number) {
     if (expandedFoodId === foodId) {
@@ -163,9 +149,7 @@ export default function SearchModal({
   // Adjusts the quantity with small stepper buttons.
   // Users can still type any decimal manually in the center input.
   function adjustQuantity(delta: number) {
-    const currentQuantity = parseQuantity(quantityInput) ?? 1;
-    const nextQuantity = Math.max(MIN_QUANTITY, currentQuantity + delta);
-    setQuantityInput(formatQuantityValue(nextQuantity));
+    setQuantityInput(getNextQuantityValue(quantityInput, delta));
   }
 
   // Computes the preview values shown before a food is committed.
@@ -182,7 +166,7 @@ export default function SearchModal({
   // Adds the selected food with the chosen quantity multiplier.
   // We intentionally keep the modal open afterward so users can keep logging.
   async function handleConfirmAddFood(food: CleanFoodItem) {
-    const quantityMultiplier = parseQuantity(quantityInput);
+    const quantityMultiplier = parseQuantityInput(quantityInput);
 
     if (quantityMultiplier == null) {
       return;
@@ -203,7 +187,7 @@ export default function SearchModal({
   // Renders one normalized food result row.
   function renderFoodItem({ item }: { item: CleanFoodItem }) {
     const isExpanded = expandedFoodId === item.fdcId;
-    const parsedQuantity = parseQuantity(quantityInput);
+    const parsedQuantity = parseQuantityInput(quantityInput);
     const quantityPreview = parsedQuantity ?? 1;
     const scaledNutrition = getScaledNutrition(item, quantityPreview);
 

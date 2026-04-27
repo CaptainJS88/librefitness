@@ -1,21 +1,25 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { StyleSheet, TouchableOpacity, View } from 'react-native';
 import { SPACING } from '@/constants/theme';
 import { useAppTheme } from '@/hooks/useAppTheme';
 import type { FoodEntryRow } from '@/lib/foodEntries';
 import Icon from '@/components/Shared/Icon';
 import QuantityEditor from './QuantityEditor';
+import {
+  getNextQuantityValue,
+  parseQuantityInput,
+  QUANTITY_STEP,
+} from './quantityEditorUtils';
 import { ThemedText } from '../Shared/ThemedText';
 import { ThemedView } from '../Shared/ThemedView';
 
 type FoodEntryItemProps = {
   entry: FoodEntryRow;
+  isExpanded: boolean;
+  onToggleExpanded: () => void;
   onUpdateEntry: (entry: FoodEntryRow, nextServingSizeValue: number) => Promise<void>;
   onDeleteEntry: (entry: FoodEntryRow) => Promise<void>;
 };
-
-const QUANTITY_STEP = 0.5;
-const MIN_QUANTITY = 0.1;
 
 // Small formatter for the serving line.
 // Example: "72 kcal, 1 cup"
@@ -33,48 +37,33 @@ function formatServing(entry: FoodEntryRow) {
 
 export default function FoodEntryItem({
   entry,
+  isExpanded,
+  onToggleExpanded,
   onUpdateEntry,
   onDeleteEntry,
 }: FoodEntryItemProps) {
   const { colors } = useAppTheme();
-  const [isExpanded, setIsExpanded] = useState(false);
   const [quantityInput, setQuantityInput] = useState(
     entry.serving_size_value?.toString() ?? '1'
   );
   const [isSaving, setIsSaving] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
 
-  // Parses the editor input into a valid positive decimal value.
-  function parseQuantity(value: string) {
-    const parsed = Number(value);
-
-    if (!Number.isFinite(parsed) || parsed <= 0) {
-      return null;
-    }
-
-    return parsed;
-  }
-
-  // Keeps stepper values stable and readable.
-  function formatQuantityValue(value: number) {
-    return Number(value.toFixed(2)).toString();
-  }
-
-  function toggleExpanded() {
-    if (isExpanded) {
-      setIsExpanded(false);
+  // Whenever this editor closes, reset back to the saved serving value.
+  // That way reopening the row always starts from the current database state.
+  useEffect(() => {
+    if (!isExpanded) {
       setQuantityInput(entry.serving_size_value?.toString() ?? '1');
-      return;
     }
+  }, [entry.id, entry.serving_size_value, isExpanded]);
 
+  function handleToggleExpanded() {
     setQuantityInput(entry.serving_size_value?.toString() ?? '1');
-    setIsExpanded(true);
+    onToggleExpanded();
   }
 
   function adjustQuantity(delta: number) {
-    const currentQuantity = parseQuantity(quantityInput) ?? 1;
-    const nextQuantity = Math.max(MIN_QUANTITY, currentQuantity + delta);
-    setQuantityInput(formatQuantityValue(nextQuantity));
+    setQuantityInput(getNextQuantityValue(quantityInput, delta));
   }
 
   // Builds a preview of the updated calories and macros using a serving ratio.
@@ -95,7 +84,7 @@ export default function FoodEntryItem({
   }
 
   async function handleSaveEdit() {
-    const nextServingSizeValue = parseQuantity(quantityInput);
+    const nextServingSizeValue = parseQuantityInput(quantityInput);
 
     if (nextServingSizeValue == null) {
       return;
@@ -104,7 +93,6 @@ export default function FoodEntryItem({
     try {
       setIsSaving(true);
       await onUpdateEntry(entry, nextServingSizeValue);
-      setIsExpanded(false);
     } catch (error) {
       console.error('Error saving food entry edit:', error);
     } finally {
@@ -116,7 +104,6 @@ export default function FoodEntryItem({
     try {
       setIsDeleting(true);
       await onDeleteEntry(entry);
-      setIsExpanded(false);
     } catch (error) {
       console.error('Error deleting food entry:', error);
     } finally {
@@ -124,7 +111,7 @@ export default function FoodEntryItem({
     }
   }
 
-  const parsedQuantity = parseQuantity(quantityInput);
+  const parsedQuantity = parseQuantityInput(quantityInput);
   const preview = getUpdatedPreview(parsedQuantity ?? (entry.serving_size_value ?? 1));
 
   return (
@@ -148,7 +135,7 @@ export default function FoodEntryItem({
             used in the add-food search flow. */}
         <TouchableOpacity
           style={styles.moreButton}
-          onPress={toggleExpanded}
+          onPress={handleToggleExpanded}
           activeOpacity={0.7}
         >
           <Icon
