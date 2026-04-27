@@ -136,6 +136,10 @@ const TrackerScreen = function () {
   // Stores the user's current default calorie/macro targets from profiles.
   const [defaultTargets, setDefaultTargets] = useState<DailyLogTargetsInput | null>(null);
 
+  // Stores the selected day's snapshotted targets when a daily_log already exists.
+  // This is what preserves historical targets for past dates.
+  const [selectedDayTargets, setSelectedDayTargets] = useState<DailyLogTargetsInput | null>(null);
+
   // Stores the selected day's current food entries.
   const [foodEntries, setFoodEntries] = useState<FoodEntryRow[]>([]);
 
@@ -198,6 +202,7 @@ const TrackerScreen = function () {
   async function loadSelectedDayData() {
     try {
       if (!session?.user?.id) {
+        setSelectedDayTargets(null);
         setFoodEntries([]);
         setExpandedFoodEntryId(null);
         return;
@@ -209,10 +214,19 @@ const TrackerScreen = function () {
       const dailyLog = await getDailyLogByDate(session.user.id, selectedDateString);
 
       if (!dailyLog) {
+        setSelectedDayTargets(null);
         setFoodEntries([]);
         setExpandedFoodEntryId(null);
         return;
       }
+
+      // Prefer the stored targets from this specific day whenever they exist.
+      setSelectedDayTargets({
+        targetCalories: dailyLog.target_calories,
+        targetProtein: dailyLog.target_protein,
+        targetCarbs: dailyLog.target_carbs,
+        targetFats: dailyLog.target_fats,
+      });
 
       const entries = await getFoodEntriesForDailyLog(dailyLog.id);
       setFoodEntries(entries);
@@ -308,7 +322,8 @@ const TrackerScreen = function () {
   const nutritionTotals = calculateNutritionTotals(foodEntries);
   const mealCalories = calculateMealCalories(foodEntries);
   const groupedFoodEntries = groupFoodEntriesByMeal(foodEntries);
-  const defaultTargetCalories = defaultTargets?.targetCalories ?? 0;
+  const activeTargets = selectedDayTargets ?? defaultTargets;
+  const activeTargetCalories = activeTargets?.targetCalories ?? 0;
 
   return (
     <ThemedView variant="background" style={styles.screen}>
@@ -328,21 +343,21 @@ const TrackerScreen = function () {
         />
 
         <DailySummary
-          dietName="Mediterranean Diet"
-          targetCalories={defaultTargetCalories}
+          dietName="Target Calories"
+          targetCalories={activeTargetCalories}
           consumedCalories={roundToOneDecimal(nutritionTotals.calories)}
           burnedCalories={0}
           carbs={{
             current: roundToOneDecimal(nutritionTotals.carbs),
-            max: defaultTargets?.targetCarbs ?? 0,
+            max: activeTargets?.targetCarbs ?? 0,
           }}
           protein={{
             current: roundToOneDecimal(nutritionTotals.protein),
-            max: defaultTargets?.targetProtein ?? 0,
+            max: activeTargets?.targetProtein ?? 0,
           }}
           fat={{
             current: roundToOneDecimal(nutritionTotals.fat),
-            max: defaultTargets?.targetFats ?? 0,
+            max: activeTargets?.targetFats ?? 0,
           }}
         />
 
@@ -353,7 +368,7 @@ const TrackerScreen = function () {
         <MealsRow
           title="Breakfast"
           currentCalories={roundToOneDecimal(mealCalories.Breakfast)}
-          maxCalories={Math.round(defaultTargetCalories * MEAL_CALORIE_SPLITS.Breakfast)}
+          maxCalories={Math.round(activeTargetCalories * MEAL_CALORIE_SPLITS.Breakfast)}
           iconName="cafe"
           onAddPress={() => openSearchModal('Breakfast')}
         />
@@ -371,7 +386,7 @@ const TrackerScreen = function () {
         <MealsRow
           title="Lunch"
           currentCalories={roundToOneDecimal(mealCalories.Lunch)}
-          maxCalories={Math.round(defaultTargetCalories * MEAL_CALORIE_SPLITS.Lunch)}
+          maxCalories={Math.round(activeTargetCalories * MEAL_CALORIE_SPLITS.Lunch)}
           iconName="fast-food"
           onAddPress={() => openSearchModal('Lunch')}
         />
@@ -389,7 +404,7 @@ const TrackerScreen = function () {
         <MealsRow
           title="Dinner"
           currentCalories={roundToOneDecimal(mealCalories.Dinner)}
-          maxCalories={Math.round(defaultTargetCalories * MEAL_CALORIE_SPLITS.Dinner)}
+          maxCalories={Math.round(activeTargetCalories * MEAL_CALORIE_SPLITS.Dinner)}
           iconName="restaurant"
           onAddPress={() => openSearchModal('Dinner')}
         />
@@ -407,7 +422,7 @@ const TrackerScreen = function () {
         <MealsRow
           title="Snacks"
           currentCalories={roundToOneDecimal(mealCalories.Snacks)}
-          maxCalories={Math.round(defaultTargetCalories * MEAL_CALORIE_SPLITS.Snacks)}
+          maxCalories={Math.round(activeTargetCalories * MEAL_CALORIE_SPLITS.Snacks)}
           iconName="fast-food"
           onAddPress={() => openSearchModal('Snacks')}
         />
