@@ -1,5 +1,10 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Alert } from 'react-native';
+import {
+  roundToOneDecimal,
+  scaleFoodForQuantity,
+  scaleServingSnapshot,
+} from '@/lib/foodEntryMath';
 import type { CleanFoodItem } from '@/lib/usda';
 import {
   getDailyLogByDate,
@@ -44,12 +49,6 @@ function formatDateForDatabase(date: Date) {
   const day = String(date.getDate()).padStart(2, '0');
 
   return `${year}-${month}-${day}`;
-}
-
-// Nutrition values are intentionally rounded to a single decimal place
-// so the tracker UI and saved food-entry math stay consistent.
-function roundToOneDecimal(value: number) {
-  return Math.round(value * 10) / 10;
 }
 
 function calculateNutritionTotals(entries: FoodEntryRow[]): NutritionTotals {
@@ -206,22 +205,20 @@ export function useTrackerDay({ userId }: UseTrackerDayArgs) {
 
       const selectedDateString = formatDateForDatabase(selectedDate);
       const dailyLog = await getOrCreateDailyLog(userId, selectedDateString);
+      const scaledFood = scaleFoodForQuantity(food, quantityMultiplier);
 
       await addFoodEntry({
         dailyLogId: dailyLog.id,
         mealType,
         usdaFoodId: food.fdcId,
         foodName: food.description,
-        servingSizeValue: roundToOneDecimal(food.servingSize * quantityMultiplier),
+        servingSizeValue: scaledFood.servingSizeValue,
         servingSizeUnit: food.servingSizeUnit,
-        servingWeightGrams:
-          food.servingSizeUnit.toLowerCase() === 'g'
-            ? roundToOneDecimal(food.servingSize * quantityMultiplier)
-            : null,
-        calories: roundToOneDecimal(food.calories * quantityMultiplier),
-        protein: roundToOneDecimal(food.protein * quantityMultiplier),
-        carbs: roundToOneDecimal(food.carbs * quantityMultiplier),
-        fat: roundToOneDecimal(food.fat * quantityMultiplier),
+        servingWeightGrams: scaledFood.servingWeightGrams,
+        calories: scaledFood.calories,
+        protein: scaledFood.protein,
+        carbs: scaledFood.carbs,
+        fat: scaledFood.fat,
       });
 
       await loadSelectedDayData();
@@ -260,23 +257,25 @@ export function useTrackerDay({ userId }: UseTrackerDayArgs) {
     entry: FoodEntryRow,
     nextServingSizeValue: number
   ) {
-    const currentServingSizeValue =
-      entry.serving_size_value && entry.serving_size_value > 0
-        ? entry.serving_size_value
-        : 1;
-
-    const ratio = nextServingSizeValue / currentServingSizeValue;
+    const scaledEntry = scaleServingSnapshot(
+      {
+        servingSizeValue: entry.serving_size_value,
+        servingWeightGrams: entry.serving_weight_grams,
+        calories: entry.calories,
+        protein: entry.protein,
+        carbs: entry.carbs,
+        fat: entry.fat,
+      },
+      nextServingSizeValue
+    );
 
     await updateFoodEntry(entry.id, {
-      servingSizeValue: roundToOneDecimal(nextServingSizeValue),
-      servingWeightGrams:
-        entry.serving_weight_grams != null
-          ? roundToOneDecimal(entry.serving_weight_grams * ratio)
-          : null,
-      calories: roundToOneDecimal(entry.calories * ratio),
-      protein: roundToOneDecimal(entry.protein * ratio),
-      carbs: roundToOneDecimal(entry.carbs * ratio),
-      fat: roundToOneDecimal(entry.fat * ratio),
+      servingSizeValue: scaledEntry.servingSizeValue,
+      servingWeightGrams: scaledEntry.servingWeightGrams,
+      calories: scaledEntry.calories,
+      protein: scaledEntry.protein,
+      carbs: scaledEntry.carbs,
+      fat: scaledEntry.fat,
     });
 
     await loadSelectedDayData();

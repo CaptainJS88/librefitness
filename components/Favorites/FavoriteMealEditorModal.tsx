@@ -18,6 +18,10 @@ import {
   type FavoriteMealWithItems,
   updateFavoriteMeal,
 } from '@/lib/favoriteMeals';
+import {
+  scaleFoodForQuantity,
+  scaleServingSnapshot,
+} from '@/lib/foodEntryMath';
 import { type CleanFoodItem } from '@/lib/usda';
 import SearchModal from '@/components/Tracker/SearchModal';
 import { ThemedText } from '../Shared/ThemedText';
@@ -38,10 +42,6 @@ type FavoriteMealEditorModalProps = {
 
 function createDraftId() {
   return `draft-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
-}
-
-function roundToOneDecimal(value: number) {
-  return Math.round(value * 10) / 10;
 }
 
 function mapFavoriteMealItemToDraftItem(
@@ -122,24 +122,9 @@ export default function FavoriteMealEditorModal({
           return item;
         }
 
-        const currentServingSizeValue =
-          item.servingSizeValue && item.servingSizeValue > 0
-            ? item.servingSizeValue
-            : 1;
-
-        const ratio = nextServingSizeValue / currentServingSizeValue;
-
         return {
           ...item,
-          servingSizeValue: roundToOneDecimal(nextServingSizeValue),
-          servingWeightGrams:
-            item.servingWeightGrams != null
-              ? roundToOneDecimal(item.servingWeightGrams * ratio)
-              : null,
-          calories: roundToOneDecimal(item.calories * ratio),
-          protein: roundToOneDecimal(item.protein * ratio),
-          carbs: roundToOneDecimal(item.carbs * ratio),
-          fat: roundToOneDecimal(item.fat * ratio),
+          ...scaleServingSnapshot(item, nextServingSizeValue),
         };
       })
     );
@@ -151,19 +136,18 @@ export default function FavoriteMealEditorModal({
     food: CleanFoodItem,
     quantityMultiplier: number
   ) {
+    const scaledFood = scaleFoodForQuantity(food, quantityMultiplier);
+
     const nextDraftItem: FavoriteMealDraftItem = {
       id: createDraftId(),
       foodName: food.description,
-      servingSizeValue: roundToOneDecimal(food.servingSize * quantityMultiplier),
+      servingSizeValue: scaledFood.servingSizeValue,
       servingSizeUnit: food.servingSizeUnit,
-      servingWeightGrams:
-        food.servingSizeUnit.toLowerCase() === 'g'
-          ? roundToOneDecimal(food.servingSize * quantityMultiplier)
-          : null,
-      calories: roundToOneDecimal(food.calories * quantityMultiplier),
-      protein: roundToOneDecimal(food.protein * quantityMultiplier),
-      carbs: roundToOneDecimal(food.carbs * quantityMultiplier),
-      fat: roundToOneDecimal(food.fat * quantityMultiplier),
+      servingWeightGrams: scaledFood.servingWeightGrams,
+      calories: scaledFood.calories,
+      protein: scaledFood.protein,
+      carbs: scaledFood.carbs,
+      fat: scaledFood.fat,
       source: 'usda',
       sourceFoodId: food.fdcId.toString(),
     };

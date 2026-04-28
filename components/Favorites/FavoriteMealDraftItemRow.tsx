@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { StyleSheet, TouchableOpacity, View } from 'react-native';
 import { SPACING } from '@/constants/theme';
 import { useAppTheme } from '@/hooks/useAppTheme';
+import { scaleServingSnapshot } from '@/lib/foodEntryMath';
 import QuantityEditor from '@/components/Tracker/QuantityEditor';
 import {
   getNextQuantityValue,
@@ -33,10 +34,6 @@ type FavoriteMealDraftItemRowProps = {
   onDelete: () => void;
   onUpdateQuantity: (nextServingSizeValue: number) => void;
 };
-
-function roundToOneDecimal(value: number) {
-  return Math.round(value * 10) / 10;
-}
 
 function formatServing(item: FavoriteMealDraftItem) {
   if (
@@ -73,19 +70,7 @@ export default function FavoriteMealDraftItemRow({
   }
 
   function getUpdatedPreview(nextServingSizeValue: number) {
-    const currentServingSizeValue =
-      item.servingSizeValue && item.servingSizeValue > 0
-        ? item.servingSizeValue
-        : 1;
-
-    const ratio = nextServingSizeValue / currentServingSizeValue;
-
-    return {
-      calories: roundToOneDecimal(item.calories * ratio),
-      protein: roundToOneDecimal(item.protein * ratio),
-      carbs: roundToOneDecimal(item.carbs * ratio),
-      fat: roundToOneDecimal(item.fat * ratio),
-    };
+    return scaleServingSnapshot(item, nextServingSizeValue);
   }
 
   const parsedQuantity = parseQuantityInput(quantityInput);

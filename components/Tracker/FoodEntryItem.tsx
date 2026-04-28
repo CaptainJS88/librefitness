@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { StyleSheet, TouchableOpacity, View } from 'react-native';
 import { SPACING } from '@/constants/theme';
 import { useAppTheme } from '@/hooks/useAppTheme';
+import { scaleServingSnapshot } from '@/lib/foodEntryMath';
 import type { FoodEntryRow } from '@/lib/foodEntries';
 import Icon from '@/components/Shared/Icon';
 import QuantityEditor from './QuantityEditor';
@@ -68,19 +69,17 @@ export default function FoodEntryItem({
 
   // Builds a preview of the updated calories and macros using a serving ratio.
   function getUpdatedPreview(nextServingSizeValue: number) {
-    const currentServingSizeValue =
-      entry.serving_size_value && entry.serving_size_value > 0
-        ? entry.serving_size_value
-        : 1;
-
-    const ratio = nextServingSizeValue / currentServingSizeValue;
-
-    return {
-      calories: Number((entry.calories * ratio).toFixed(1)),
-      protein: Number((entry.protein * ratio).toFixed(1)),
-      carbs: Number((entry.carbs * ratio).toFixed(1)),
-      fat: Number((entry.fat * ratio).toFixed(1)),
-    };
+    return scaleServingSnapshot(
+      {
+        servingSizeValue: entry.serving_size_value,
+        servingWeightGrams: entry.serving_weight_grams,
+        calories: entry.calories,
+        protein: entry.protein,
+        carbs: entry.carbs,
+        fat: entry.fat,
+      },
+      nextServingSizeValue
+    );
   }
 
   async function handleSaveEdit() {

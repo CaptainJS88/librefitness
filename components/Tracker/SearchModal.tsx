@@ -16,6 +16,7 @@ import {
   calculateFavoriteMealTotals,
   type FavoriteMealWithItems,
 } from '@/lib/favoriteMeals';
+import { scaleFoodForQuantity } from '@/lib/foodEntryMath';
 import Icon from '@/components/Shared/Icon';
 import QuantityEditor from './QuantityEditor';
 import {
@@ -177,17 +178,6 @@ export default function SearchModal({
     setQuantityInput(getNextQuantityValue(quantityInput, delta));
   }
 
-  // Computes the preview values shown before a food is committed.
-  function getScaledNutrition(food: CleanFoodItem, quantityMultiplier: number) {
-    return {
-      calories: Number((food.calories * quantityMultiplier).toFixed(1)),
-      protein: Number((food.protein * quantityMultiplier).toFixed(1)),
-      carbs: Number((food.carbs * quantityMultiplier).toFixed(1)),
-      fat: Number((food.fat * quantityMultiplier).toFixed(1)),
-      servingAmount: Number((food.servingSize * quantityMultiplier).toFixed(1)),
-    };
-  }
-
   // Adds the selected food with the chosen quantity multiplier.
   // We intentionally keep the modal open afterward so users can keep logging.
   async function handleConfirmAddFood(food: CleanFoodItem) {
@@ -229,7 +219,7 @@ export default function SearchModal({
     const isExpanded = expandedFoodId === item.fdcId;
     const parsedQuantity = parseQuantityInput(quantityInput);
     const quantityPreview = parsedQuantity ?? 1;
-    const scaledNutrition = getScaledNutrition(item, quantityPreview);
+    const scaledNutrition = scaleFoodForQuantity(item, quantityPreview);
 
     return (
       <View style={styles.resultCard}>
@@ -272,7 +262,7 @@ export default function SearchModal({
               onChangeQuantity={setQuantityInput}
               onDecrement={() => adjustQuantity(-QUANTITY_STEP)}
               onIncrement={() => adjustQuantity(QUANTITY_STEP)}
-              previewLineOne={`${scaledNutrition.servingAmount} ${item.servingSizeUnit} • ${scaledNutrition.calories} kcal`}
+              previewLineOne={`${scaledNutrition.servingSizeValue} ${item.servingSizeUnit} • ${scaledNutrition.calories} kcal`}
               previewLineTwo={`${scaledNutrition.protein}P • ${scaledNutrition.carbs}C • ${scaledNutrition.fat}F`}
               primaryButtonLabel="Done"
               onPressPrimary={() => handleConfirmAddFood(item)}
