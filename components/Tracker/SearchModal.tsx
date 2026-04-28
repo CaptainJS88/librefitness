@@ -296,26 +296,6 @@ export default function SearchModal({
       return favoriteMeal.meal_type === favoriteFilter;
     });
 
-    if (favoriteMeals.length === 0) {
-      return (
-        <ThemedView style={styles.stateContainer}>
-          <ThemedText variant="textMuted" style={styles.stateText}>
-            No favorite meals yet. Create them from the Favorites tab.
-          </ThemedText>
-        </ThemedView>
-      );
-    }
-
-    if (filteredFavoriteMeals.length === 0) {
-      return (
-        <ThemedView style={styles.stateContainer}>
-          <ThemedText variant="textMuted" style={styles.stateText}>
-            No favorite meals for this filter yet.
-          </ThemedText>
-        </ThemedView>
-      );
-    }
-
     return (
       <View style={styles.favoriteMealsContainer}>
         <MealTypeFilterChips
@@ -323,70 +303,84 @@ export default function SearchModal({
           onChange={(nextFilter) => setFavoriteFilter(nextFilter as MealTypeFilter)}
         />
 
-        <FlatList
-          data={filteredFavoriteMeals}
-          keyExtractor={(item) => item.id}
-          showsVerticalScrollIndicator={false}
-          contentContainerStyle={styles.listContent}
-          renderItem={({ item }) => {
-            const totals = calculateFavoriteMealTotals(item);
-            const itemNames = item.items.map((favoriteItem) => favoriteItem.food_name);
-            const previewLine =
-              itemNames.length <= 2
-                ? itemNames.join(', ')
-                : `${itemNames.slice(0, 2).join(', ')} +${itemNames.length - 2} more`;
+        {favoriteMeals.length === 0 ? (
+          <ThemedView style={styles.stateContainer}>
+            <ThemedText variant="textMuted" style={styles.stateText}>
+              No favorite meals yet. Create them from the Favorites tab.
+            </ThemedText>
+          </ThemedView>
+        ) : filteredFavoriteMeals.length === 0 ? (
+          <ThemedView style={styles.stateContainer}>
+            <ThemedText variant="textMuted" style={styles.stateText}>
+              No favorite meals for this filter yet.
+            </ThemedText>
+          </ThemedView>
+        ) : (
+          <FlatList
+            data={filteredFavoriteMeals}
+            keyExtractor={(item) => item.id}
+            showsVerticalScrollIndicator={false}
+            contentContainerStyle={styles.listContent}
+            renderItem={({ item }) => {
+              const totals = calculateFavoriteMealTotals(item);
+              const itemNames = item.items.map((favoriteItem) => favoriteItem.food_name);
+              const previewLine =
+                itemNames.length <= 2
+                  ? itemNames.join(', ')
+                  : `${itemNames.slice(0, 2).join(', ')} +${itemNames.length - 2} more`;
 
-            const isSubmitting = isSubmittingFavoriteMealId === item.id;
+              const isSubmitting = isSubmittingFavoriteMealId === item.id;
 
-            return (
-              <ThemedView variant="surface" style={styles.favoriteMealCard}>
-                <View style={styles.favoriteMealRow}>
-                  <View style={styles.favoriteMealTextBlock}>
-                    <View style={styles.favoriteMealTitleRow}>
-                      <ThemedText style={styles.foodTitle}>{item.name}</ThemedText>
+              return (
+                <ThemedView variant="surface" style={styles.favoriteMealCard}>
+                  <View style={styles.favoriteMealRow}>
+                    <View style={styles.favoriteMealTextBlock}>
+                      <View style={styles.favoriteMealTitleRow}>
+                        <ThemedText style={styles.foodTitle}>{item.name}</ThemedText>
 
-                      <ThemedView
-                        style={[
-                          styles.favoriteMealChip,
-                          { backgroundColor: colors.iconSurface },
-                        ]}
-                      >
-                        <ThemedText
-                          variant="textMuted"
-                          style={styles.favoriteMealChipText}
+                        <ThemedView
+                          style={[
+                            styles.favoriteMealChip,
+                            { backgroundColor: colors.iconSurface },
+                          ]}
                         >
-                          {item.meal_type}
-                        </ThemedText>
-                      </ThemedView>
+                          <ThemedText
+                            variant="textMuted"
+                            style={styles.favoriteMealChipText}
+                          >
+                            {item.meal_type}
+                          </ThemedText>
+                        </ThemedView>
+                      </View>
+
+                      <ThemedText variant="textMuted" style={styles.metaText}>
+                        {previewLine}
+                      </ThemedText>
+
+                      <ThemedText variant="textMuted" style={styles.metaText}>
+                        {Math.round(totals.calories)} kcal • {Math.round(totals.protein)}P •{' '}
+                        {Math.round(totals.carbs)}C • {Math.round(totals.fat)}F
+                      </ThemedText>
                     </View>
 
-                    <ThemedText variant="textMuted" style={styles.metaText}>
-                      {previewLine}
-                    </ThemedText>
-
-                    <ThemedText variant="textMuted" style={styles.metaText}>
-                      {Math.round(totals.calories)} kcal • {Math.round(totals.protein)}P •{' '}
-                      {Math.round(totals.carbs)}C • {Math.round(totals.fat)}F
-                    </ThemedText>
+                    <TouchableOpacity
+                      style={[styles.addButton, { backgroundColor: colors.primary }]}
+                      onPress={() => handleConfirmAddFavoriteMeal(item)}
+                      disabled={isSubmitting}
+                      activeOpacity={0.85}
+                    >
+                      {isSubmitting ? (
+                        <ActivityIndicator size="small" color={colors.buttonText} />
+                      ) : (
+                        <Icon name="add" size={22} color={colors.buttonText} />
+                      )}
+                    </TouchableOpacity>
                   </View>
-
-                  <TouchableOpacity
-                    style={[styles.addButton, { backgroundColor: colors.primary }]}
-                    onPress={() => handleConfirmAddFavoriteMeal(item)}
-                    disabled={isSubmitting}
-                    activeOpacity={0.85}
-                  >
-                    {isSubmitting ? (
-                      <ActivityIndicator size="small" color={colors.buttonText} />
-                    ) : (
-                      <Icon name="add" size={22} color={colors.buttonText} />
-                    )}
-                  </TouchableOpacity>
-                </View>
-              </ThemedView>
-            );
-          }}
-        />
+                </ThemedView>
+              );
+            }}
+          />
+        )}
       </View>
     );
   }

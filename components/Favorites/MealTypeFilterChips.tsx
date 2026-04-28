@@ -33,6 +33,7 @@ export default function MealTypeFilterChips({
     <ScrollView
       horizontal
       showsHorizontalScrollIndicator={false}
+      style={styles.scrollView}
       contentContainerStyle={styles.content}
     >
       {options.map((option) => {
@@ -67,15 +68,20 @@ export default function MealTypeFilterChips({
 }
 
 const styles = StyleSheet.create({
+  scrollView: {
+    flexGrow: 0,
+  },
   content: {
     paddingVertical: 4,
     gap: SPACING.sm,
+    alignItems: 'center',
   },
   chip: {
     borderWidth: 1,
     borderRadius: 999,
     paddingHorizontal: 14,
     paddingVertical: 8,
+    alignSelf: 'flex-start',
   },
   chipText: {
     fontSize: 13,
