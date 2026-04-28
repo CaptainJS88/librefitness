@@ -208,7 +208,7 @@ export default function SearchModal({
       setIsSubmittingFoodId(null);
     }
   }
-
+ // This async fucntion needs to move out of here eventually
   async function handleConfirmAddFavoriteMeal(favoriteMeal: FavoriteMealWithItems) {
     if (!onAddFavoriteMeal) {
       return;
@@ -286,7 +286,7 @@ export default function SearchModal({
       </View>
     );
   }
-
+  // This should be another component/moved outta here.
   function renderFavoriteMealsContent() {
     const filteredFavoriteMeals = favoriteMeals.filter((favoriteMeal) => {
       if (favoriteFilter === 'All') {

@@ -232,7 +232,8 @@ export function useTrackerDay({ userId }: UseTrackerDayArgs) {
   }
 
   // Favorite meals are just batch inserts of saved snapshot items
-  // into the current day's real food_entries.
+  // into the current day's real food_entries. 
+  // Is this repeated? 
   async function handleAddFavoriteMeal(
     favoriteMeal: FavoriteMealWithItems,
     mealType: MealType
