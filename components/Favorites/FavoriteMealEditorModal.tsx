@@ -115,15 +115,6 @@ export default function FavoriteMealEditorModal({
     return mealName.trim().length > 0 && draftItems.length > 0 && !isSaving;
   }, [draftItems.length, isSaving, mealName]);
 
-  function moveDraftItem(fromIndex: number, toIndex: number) {
-    setDraftItems((currentItems) => {
-      const nextItems = [...currentItems];
-      const [movedItem] = nextItems.splice(fromIndex, 1);
-      nextItems.splice(toIndex, 0, movedItem);
-      return nextItems;
-    });
-  }
-
   function updateDraftItemQuantity(itemId: string, nextServingSizeValue: number) {
     setDraftItems((currentItems) =>
       currentItems.map((item) => {
@@ -304,20 +295,16 @@ export default function FavoriteMealEditorModal({
                   </ThemedText>
                 </ThemedView>
               ) : (
-                draftItems.map((item, index) => (
+                draftItems.map((item) => (
                   <FavoriteMealDraftItemRow
                     key={item.id}
                     item={item}
                     isExpanded={expandedDraftItemId === item.id}
-                    canMoveUp={index > 0}
-                    canMoveDown={index < draftItems.length - 1}
                     onToggleExpanded={() =>
                       setExpandedDraftItemId((currentId) =>
                         currentId === item.id ? null : item.id
                       )
                     }
-                    onMoveUp={() => moveDraftItem(index, index - 1)}
-                    onMoveDown={() => moveDraftItem(index, index + 1)}
                     onDelete={() =>
                       {
                         setExpandedDraftItemId((currentId) =>

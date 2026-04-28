@@ -29,11 +29,7 @@ export type FavoriteMealDraftItem = {
 type FavoriteMealDraftItemRowProps = {
   item: FavoriteMealDraftItem;
   isExpanded: boolean;
-  canMoveUp: boolean;
-  canMoveDown: boolean;
   onToggleExpanded: () => void;
-  onMoveUp: () => void;
-  onMoveDown: () => void;
   onDelete: () => void;
   onUpdateQuantity: (nextServingSizeValue: number) => void;
 };
@@ -57,11 +53,7 @@ function formatServing(item: FavoriteMealDraftItem) {
 export default function FavoriteMealDraftItemRow({
   item,
   isExpanded,
-  canMoveUp,
-  canMoveDown,
   onToggleExpanded,
-  onMoveUp,
-  onMoveDown,
   onDelete,
   onUpdateQuantity,
 }: FavoriteMealDraftItemRowProps) {
@@ -102,34 +94,30 @@ export default function FavoriteMealDraftItemRow({
   return (
     <ThemedView variant="surface" style={styles.card}>
       <View style={styles.mainRow}>
-        <TouchableOpacity
-          style={styles.textBlock}
-          onPress={onToggleExpanded}
-          activeOpacity={0.85}
-        >
+        <View style={styles.textBlock}>
           <ThemedText style={styles.title}>{item.foodName}</ThemedText>
           <ThemedText variant="textMuted" style={styles.metaText}>
             {formatServing(item)}
           </ThemedText>
-        </TouchableOpacity>
+        </View>
 
         <View style={styles.actionsRow}>
           <TouchableOpacity
-            style={[styles.iconButton, { borderColor: colors.border, opacity: canMoveUp ? 1 : 0.45 }]}
-            onPress={onMoveUp}
-            disabled={!canMoveUp}
+            style={[
+              styles.iconButton,
+              {
+                borderColor: isExpanded ? colors.primary : colors.border,
+                backgroundColor: isExpanded ? colors.primary : 'transparent',
+              },
+            ]}
+            onPress={onToggleExpanded}
             activeOpacity={0.85}
           >
-            <Icon name="chevron-up" size={18} color={colors.textMuted} />
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={[styles.iconButton, { borderColor: colors.border, opacity: canMoveDown ? 1 : 0.45 }]}
-            onPress={onMoveDown}
-            disabled={!canMoveDown}
-            activeOpacity={0.85}
-          >
-            <Icon name="chevron-down" size={18} color={colors.textMuted} />
+            <Icon
+              name="create-outline"
+              size={18}
+              color={isExpanded ? colors.buttonText : colors.textMuted}
+            />
           </TouchableOpacity>
 
           <TouchableOpacity
