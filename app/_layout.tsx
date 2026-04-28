@@ -26,7 +26,7 @@ import { AuthProvider, useAuth } from '@/contexts/AuthContext';
       else if (!session && inAuthGroup) {
         router.replace('/login');
       }
-    }, [session, initialized, segments])
+    }, [session, initialized, segments, router])
     return <Slot />;
   }
  

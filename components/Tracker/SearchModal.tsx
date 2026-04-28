@@ -12,6 +12,10 @@ import { SPACING } from '@/constants/theme';
 import { useAppTheme } from '@/hooks/useAppTheme';
 import { USDA, type CleanFoodItem } from '@/lib/usda';
 import { mapUSDASearchResponseToCleanFoods } from '@/lib/usda.mapper';
+import {
+  calculateFavoriteMealTotals,
+  type FavoriteMealWithItems,
+} from '@/lib/favoriteMeals';
 import Icon from '@/components/Shared/Icon';
 import QuantityEditor from './QuantityEditor';
 import {
@@ -19,6 +23,9 @@ import {
   parseQuantityInput,
   QUANTITY_STEP,
 } from './quantityEditorUtils';
+import MealTypeFilterChips, {
+  type MealTypeFilter,
+} from '@/components/Favorites/MealTypeFilterChips';
 import { ThemedText } from '../Shared/ThemedText';
 import { ThemedView } from '../Shared/ThemedView';
 
@@ -28,6 +35,12 @@ type SearchModalProps = {
   onClose: () => void;
   onAddFood: (food: CleanFoodItem, quantityMultiplier: number) => Promise<void>;
   pageSize?: number;
+  title?: string;
+  subtitle?: string;
+  showFavoritesTab?: boolean;
+  favoriteMeals?: FavoriteMealWithItems[];
+  defaultFavoriteFilter?: MealTypeFilter;
+  onAddFavoriteMeal?: (favoriteMeal: FavoriteMealWithItems) => Promise<void>;
 };
 
 // Small helper so the serving line stays readable in the UI.
@@ -41,6 +54,12 @@ export default function SearchModal({
   onClose,
   onAddFood,
   pageSize = 10,
+  title = 'Add Food',
+  subtitle,
+  showFavoritesTab = true,
+  favoriteMeals = [],
+  defaultFavoriteFilter = 'All',
+  onAddFavoriteMeal,
 }: SearchModalProps) {
   const { colors } = useAppTheme();
 
@@ -56,6 +75,9 @@ export default function SearchModal({
   const [expandedFoodId, setExpandedFoodId] = useState<number | null>(null);
   const [quantityInput, setQuantityInput] = useState('1');
   const [isSubmittingFoodId, setIsSubmittingFoodId] = useState<number | null>(null);
+  const [activeTab, setActiveTab] = useState<'search' | 'favorites'>('search');
+  const [favoriteFilter, setFavoriteFilter] = useState<MealTypeFilter>(defaultFavoriteFilter);
+  const [isSubmittingFavoriteMealId, setIsSubmittingFavoriteMealId] = useState<string | null>(null);
 
   // When the modal closes, reset its internal state.
   // That keeps each modal session feeling fresh and predictable.
@@ -69,8 +91,11 @@ export default function SearchModal({
       setExpandedFoodId(null);
       setQuantityInput('1');
       setIsSubmittingFoodId(null);
+      setActiveTab('search');
+      setFavoriteFilter(defaultFavoriteFilter);
+      setIsSubmittingFavoriteMealId(null);
     }
-  }, [visible]);
+  }, [defaultFavoriteFilter, visible]);
 
   // Debounce the user's typing so we do not hit the API on every keypress.
   useEffect(() => {
@@ -184,6 +209,21 @@ export default function SearchModal({
     }
   }
 
+  async function handleConfirmAddFavoriteMeal(favoriteMeal: FavoriteMealWithItems) {
+    if (!onAddFavoriteMeal) {
+      return;
+    }
+
+    try {
+      setIsSubmittingFavoriteMealId(favoriteMeal.id);
+      await onAddFavoriteMeal(favoriteMeal);
+    } catch (error) {
+      console.error('Error confirming favorite meal addition:', error);
+    } finally {
+      setIsSubmittingFavoriteMealId(null);
+    }
+  }
+
   // Renders one normalized food result row.
   function renderFoodItem({ item }: { item: CleanFoodItem }) {
     const isExpanded = expandedFoodId === item.fdcId;
@@ -247,6 +287,110 @@ export default function SearchModal({
     );
   }
 
+  function renderFavoriteMealsContent() {
+    const filteredFavoriteMeals = favoriteMeals.filter((favoriteMeal) => {
+      if (favoriteFilter === 'All') {
+        return true;
+      }
+
+      return favoriteMeal.meal_type === favoriteFilter;
+    });
+
+    if (favoriteMeals.length === 0) {
+      return (
+        <ThemedView style={styles.stateContainer}>
+          <ThemedText variant="textMuted" style={styles.stateText}>
+            No favorite meals yet. Create them from the Favorites tab.
+          </ThemedText>
+        </ThemedView>
+      );
+    }
+
+    if (filteredFavoriteMeals.length === 0) {
+      return (
+        <ThemedView style={styles.stateContainer}>
+          <ThemedText variant="textMuted" style={styles.stateText}>
+            No favorite meals for this filter yet.
+          </ThemedText>
+        </ThemedView>
+      );
+    }
+
+    return (
+      <View style={styles.favoriteMealsContainer}>
+        <MealTypeFilterChips
+          value={favoriteFilter}
+          onChange={(nextFilter) => setFavoriteFilter(nextFilter as MealTypeFilter)}
+        />
+
+        <FlatList
+          data={filteredFavoriteMeals}
+          keyExtractor={(item) => item.id}
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={styles.listContent}
+          renderItem={({ item }) => {
+            const totals = calculateFavoriteMealTotals(item);
+            const itemNames = item.items.map((favoriteItem) => favoriteItem.food_name);
+            const previewLine =
+              itemNames.length <= 2
+                ? itemNames.join(', ')
+                : `${itemNames.slice(0, 2).join(', ')} +${itemNames.length - 2} more`;
+
+            const isSubmitting = isSubmittingFavoriteMealId === item.id;
+
+            return (
+              <ThemedView variant="surface" style={styles.favoriteMealCard}>
+                <View style={styles.favoriteMealRow}>
+                  <View style={styles.favoriteMealTextBlock}>
+                    <View style={styles.favoriteMealTitleRow}>
+                      <ThemedText style={styles.foodTitle}>{item.name}</ThemedText>
+
+                      <ThemedView
+                        style={[
+                          styles.favoriteMealChip,
+                          { backgroundColor: colors.iconSurface },
+                        ]}
+                      >
+                        <ThemedText
+                          variant="textMuted"
+                          style={styles.favoriteMealChipText}
+                        >
+                          {item.meal_type}
+                        </ThemedText>
+                      </ThemedView>
+                    </View>
+
+                    <ThemedText variant="textMuted" style={styles.metaText}>
+                      {previewLine}
+                    </ThemedText>
+
+                    <ThemedText variant="textMuted" style={styles.metaText}>
+                      {Math.round(totals.calories)} kcal • {Math.round(totals.protein)}P •{' '}
+                      {Math.round(totals.carbs)}C • {Math.round(totals.fat)}F
+                    </ThemedText>
+                  </View>
+
+                  <TouchableOpacity
+                    style={[styles.addButton, { backgroundColor: colors.primary }]}
+                    onPress={() => handleConfirmAddFavoriteMeal(item)}
+                    disabled={isSubmitting}
+                    activeOpacity={0.85}
+                  >
+                    {isSubmitting ? (
+                      <ActivityIndicator size="small" color={colors.buttonText} />
+                    ) : (
+                      <Icon name="add" size={22} color={colors.buttonText} />
+                    )}
+                  </TouchableOpacity>
+                </View>
+              </ThemedView>
+            );
+          }}
+        />
+      </View>
+    );
+  }
+
   // Decides what the modal should show below the search bar.
   function renderContent() {
     if (query.trim().length < 2) {
@@ -284,7 +428,7 @@ export default function SearchModal({
       return (
         <ThemedView style={styles.stateContainer}>
           <ThemedText variant="textMuted" style={styles.stateText}>
-            No foods found for "{debouncedQuery}".
+            {`No foods found for ${debouncedQuery}.`}
           </ThemedText>
         </ThemedView>
       );
@@ -314,9 +458,9 @@ export default function SearchModal({
           {/* Header row with the meal name and close button */}
           <ThemedView style={styles.headerRow}>
             <View style={styles.headerTextBlock}>
-              <ThemedText style={styles.title}>Add Food</ThemedText>
+              <ThemedText style={styles.title}>{title}</ThemedText>
               <ThemedText variant="textMuted" style={styles.subtitle}>
-                Searching for: {mealLabel}
+                {subtitle ?? `Searching for: ${mealLabel}`}
               </ThemedText>
             </View>
 
@@ -328,26 +472,84 @@ export default function SearchModal({
             </TouchableOpacity>
           </ThemedView>
 
-          {/* Search bar */}
-          <TextInput
-            value={query}
-            onChangeText={setQuery}
-            placeholder="Search foods like apple, oats, peanut butter..."
-            placeholderTextColor={colors.textMuted}
-            autoCapitalize="none"
-            autoCorrect={false}
-            style={[
-              styles.searchInput,
-              {
-                color: colors.text,
-                backgroundColor: colors.background,
-                borderColor: colors.border,
-              },
-            ]}
-          />
+          {showFavoritesTab ? (
+            <ThemedView
+              style={[
+                styles.segmentedControl,
+                {
+                  backgroundColor: colors.background,
+                  borderColor: colors.border,
+                },
+              ]}
+            >
+              <TouchableOpacity
+                style={[
+                  styles.segmentButton,
+                  activeTab === 'search'
+                    ? { backgroundColor: colors.primary }
+                    : null,
+                ]}
+                onPress={() => setActiveTab('search')}
+                activeOpacity={0.85}
+              >
+                <ThemedText
+                  style={[
+                    styles.segmentButtonText,
+                    { color: activeTab === 'search' ? colors.buttonText : colors.text },
+                  ]}
+                >
+                  Search
+                </ThemedText>
+              </TouchableOpacity>
 
-          {/* Search results / loading / empty state */}
-          <View style={styles.resultsContainer}>{renderContent()}</View>
+              <TouchableOpacity
+                style={[
+                  styles.segmentButton,
+                  activeTab === 'favorites'
+                    ? { backgroundColor: colors.primary }
+                    : null,
+                ]}
+                onPress={() => setActiveTab('favorites')}
+                activeOpacity={0.85}
+              >
+                <ThemedText
+                  style={[
+                    styles.segmentButtonText,
+                    { color: activeTab === 'favorites' ? colors.buttonText : colors.text },
+                  ]}
+                >
+                  Favorites
+                </ThemedText>
+              </TouchableOpacity>
+            </ThemedView>
+          ) : null}
+
+          {activeTab === 'search' || !showFavoritesTab ? (
+            <>
+              {/* Search bar */}
+              <TextInput
+                value={query}
+                onChangeText={setQuery}
+                placeholder="Search foods like apple, oats, peanut butter..."
+                placeholderTextColor={colors.textMuted}
+                autoCapitalize="none"
+                autoCorrect={false}
+                style={[
+                  styles.searchInput,
+                  {
+                    color: colors.text,
+                    backgroundColor: colors.background,
+                    borderColor: colors.border,
+                  },
+                ]}
+              />
+
+              {/* Search results / loading / empty state */}
+              <View style={styles.resultsContainer}>{renderContent()}</View>
+            </>
+          ) : (
+            <View style={styles.resultsContainer}>{renderFavoriteMealsContent()}</View>
+          )}
         </ThemedView>
       </ThemedView>
     </Modal>
@@ -402,6 +604,24 @@ const styles = StyleSheet.create({
     fontSize: 16,
     marginBottom: SPACING.md,
   },
+  segmentedControl: {
+    borderWidth: 1,
+    borderRadius: 14,
+    padding: 4,
+    flexDirection: 'row',
+    gap: 4,
+    marginBottom: SPACING.md,
+  },
+  segmentButton: {
+    flex: 1,
+    borderRadius: 10,
+    paddingVertical: 10,
+    alignItems: 'center',
+  },
+  segmentButtonText: {
+    fontSize: 14,
+    fontWeight: '700',
+  },
   resultsContainer: {
     flex: 1,
   },
@@ -441,6 +661,37 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  favoriteMealsContainer: {
+    flex: 1,
+  },
+  favoriteMealCard: {
+    borderRadius: 18,
+    marginBottom: SPACING.sm,
+  },
+  favoriteMealRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: SPACING.md,
+  },
+  favoriteMealTextBlock: {
+    flex: 1,
+    marginRight: SPACING.md,
+  },
+  favoriteMealTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flexWrap: 'wrap',
+    gap: SPACING.sm,
+  },
+  favoriteMealChip: {
+    borderRadius: 999,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+  },
+  favoriteMealChipText: {
+    fontSize: 12,
+    fontWeight: '600',
   },
   stateContainer: {
     paddingTop: SPACING.xl,

@@ -19,6 +19,7 @@ import {
   type FoodEntryRow,
   type MealType,
 } from '@/lib/foodEntries';
+import { useFavoriteMeals } from '@/hooks/useFavoriteMeals';
 import { useTrackerDay } from '@/hooks/useTrackerDay';
 
 // Formats the selected date for display in the UI.
@@ -51,6 +52,9 @@ const TrackerScreen = function () {
 
   // Only one existing food-entry editor should be open at a time.
   const [expandedFoodEntryId, setExpandedFoodEntryId] = useState<string | null>(null);
+  const { favoriteMeals, loadFavoriteMeals } = useFavoriteMeals({
+    userId: session?.user?.id,
+  });
 
   const {
     selectedDate,
@@ -63,6 +67,7 @@ const TrackerScreen = function () {
     selectedDayCaloriesBurned,
     isSavingCaloriesBurned,
     handleAddFood,
+    handleAddFavoriteMeal,
     handleUpdateFoodEntry,
     handleDeleteFoodEntry,
     handleSaveCaloriesBurned,
@@ -72,6 +77,7 @@ const TrackerScreen = function () {
 
   function openSearchModal(mealLabel: MealType) {
     setActiveMeal(mealLabel);
+    void loadFavoriteMeals();
     setIsSearchModalVisible(true);
   }
 
@@ -104,6 +110,10 @@ const TrackerScreen = function () {
     quantityMultiplier: number
   ) {
     await handleAddFood(food, activeMeal, quantityMultiplier);
+  }
+
+  async function handleAddFavoriteMealForActiveMeal(favoriteMeal: Parameters<typeof handleAddFavoriteMeal>[0]) {
+    await handleAddFavoriteMeal(favoriteMeal, activeMeal);
   }
 
   useEffect(() => {
@@ -252,6 +262,9 @@ const TrackerScreen = function () {
         mealLabel={activeMeal}
         onClose={closeSearchModal}
         onAddFood={handleAddFoodForActiveMeal}
+        favoriteMeals={favoriteMeals}
+        defaultFavoriteFilter={activeMeal}
+        onAddFavoriteMeal={handleAddFavoriteMealForActiveMeal}
         pageSize={10}
       />
     </ThemedView>

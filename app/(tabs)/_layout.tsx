@@ -52,6 +52,15 @@ export default function TabLayout() {
           ),
         }}
       />
+      <Tabs.Screen
+        name="favorites"
+        options={{
+          title: 'Favorites',
+          tabBarIcon: ({ color, size }) => (
+            <Icon name="heart-outline" color={color} size={size} />
+          ),
+        }}
+      />
     </Tabs>
   );
 }

@@ -16,6 +16,10 @@ import {
   type MealType,
   updateFoodEntry,
 } from '@/lib/foodEntries';
+import {
+  addFavoriteMealToDailyLog,
+  type FavoriteMealWithItems,
+} from '@/lib/favoriteMeals';
 
 type NutritionTotals = {
   calories: number;
@@ -227,6 +231,29 @@ export function useTrackerDay({ userId }: UseTrackerDayArgs) {
     }
   }
 
+  // Favorite meals are just batch inserts of saved snapshot items
+  // into the current day's real food_entries.
+  async function handleAddFavoriteMeal(
+    favoriteMeal: FavoriteMealWithItems,
+    mealType: MealType
+  ) {
+    try {
+      if (!userId) {
+        Alert.alert('Not signed in', 'You must be signed in to add favorite meals.');
+        return;
+      }
+
+      const selectedDateString = formatDateForDatabase(selectedDate);
+      const dailyLog = await getOrCreateDailyLog(userId, selectedDateString);
+
+      await addFavoriteMealToDailyLog(dailyLog.id, mealType, favoriteMeal);
+      await loadSelectedDayData();
+    } catch (error) {
+      console.error('Error adding favorite meal:', error);
+      Alert.alert('Error', 'Unable to add favorite meal right now.');
+    }
+  }
+
   // Updates an existing entry by scaling its saved values to the new serving amount.
   async function handleUpdateFoodEntry(
     entry: FoodEntryRow,
@@ -312,6 +339,7 @@ export function useTrackerDay({ userId }: UseTrackerDayArgs) {
     isDayLoading,
     isSavingCaloriesBurned,
     handleAddFood,
+    handleAddFavoriteMeal,
     handleUpdateFoodEntry,
     handleDeleteFoodEntry,
     handleSaveCaloriesBurned,
