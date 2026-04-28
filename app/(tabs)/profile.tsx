@@ -17,6 +17,7 @@ import {
 } from '@/lib/dailyLogs';
 import {
   getProfileTargetSettings,
+  type ProfileTargetSettings,
   updateProfileTargetSettings,
 } from '@/lib/profileTargets';
 import {
@@ -68,6 +69,8 @@ const ProfileScreen = function () {
   const [proteinRatioInput, setProteinRatioInput] = useState('');
   const [carbRatioInput, setCarbRatioInput] = useState('');
   const [fatRatioInput, setFatRatioInput] = useState('');
+  const [savedTargetSettings, setSavedTargetSettings] = useState<ProfileTargetSettings | null>(null);
+  const [isEditingTargets, setIsEditingTargets] = useState(false);
   const [isLoadingTargets, setIsLoadingTargets] = useState(true);
   const [isSavingTargets, setIsSavingTargets] = useState(false);
 
@@ -92,6 +95,7 @@ const ProfileScreen = function () {
 
         const settings = await getProfileTargetSettings(session.user.id);
 
+        setSavedTargetSettings(settings);
         setTargetCaloriesInput(settings.targetCalories.toString());
         setProteinRatioInput(settings.proteinRatioPct.toString());
         setCarbRatioInput(settings.carbRatioPct.toString());
@@ -103,6 +107,7 @@ const ProfileScreen = function () {
           error instanceof Error &&
           error.message.includes('incomplete')
         ) {
+          setSavedTargetSettings(null);
           setTargetCaloriesInput('');
           setProteinRatioInput('');
           setCarbRatioInput('');
@@ -118,6 +123,24 @@ const ProfileScreen = function () {
 
     loadProfileTargets();
   }, [session?.user?.id]);
+
+  // Keeps the form reset logic in one place so Cancel and initial load stay consistent.
+  function resetTargetForm(settings: ProfileTargetSettings | null) {
+    setTargetCaloriesInput(settings?.targetCalories.toString() ?? '');
+    setProteinRatioInput(settings?.proteinRatioPct.toString() ?? '');
+    setCarbRatioInput(settings?.carbRatioPct.toString() ?? '');
+    setFatRatioInput(settings?.fatRatioPct.toString() ?? '');
+  }
+
+  function handleStartEditingTargets() {
+    resetTargetForm(savedTargetSettings);
+    setIsEditingTargets(true);
+  }
+
+  function handleCancelEditingTargets() {
+    resetTargetForm(savedTargetSettings);
+    setIsEditingTargets(false);
+  }
 
   const parsedTargetCalories = parsePositiveNumberInput(targetCaloriesInput);
   const parsedProteinRatio = parseRatioInput(proteinRatioInput);
@@ -214,6 +237,8 @@ const ProfileScreen = function () {
         fatRatioPct: parsedFatRatio,
       });
 
+      setSavedTargetSettings(updatedSettings);
+
       // Update the form with the saved values so the UI stays aligned
       // with whatever was persisted and rounded in the helper layer.
       setTargetCaloriesInput(updatedSettings.targetCalories.toString());
@@ -235,6 +260,7 @@ const ProfileScreen = function () {
         });
       }
 
+      setIsEditingTargets(false);
       Alert.alert('Saved', 'Your default targets have been updated.');
     } catch (error) {
       console.error('Error saving profile target settings:', error);
@@ -262,153 +288,224 @@ const ProfileScreen = function () {
             Set your daily calorie target and macro ratios. We will derive the gram targets automatically.
           </ThemedText>
 
-          <View style={styles.fieldGroup}>
-            <ThemedText style={styles.label}>Target Calories</ThemedText>
-            <TextInput
-              value={targetCaloriesInput}
-              onChangeText={setTargetCaloriesInput}
-              keyboardType="number-pad"
-              placeholder="1500"
-              placeholderTextColor={colors.textMuted}
-              style={[
-                styles.input,
-                {
-                  color: colors.text,
-                  backgroundColor: colors.background,
-                  borderColor: colors.border,
-                },
-              ]}
-            />
-          </View>
-
-          <ThemedText style={styles.label}>Macro Ratios (%)</ThemedText>
-          <View style={styles.ratioRow}>
-            <View style={styles.ratioField}>
-              <ThemedText variant="textMuted" style={styles.ratioLabel}>
-                Protein
-              </ThemedText>
-              <TextInput
-                value={proteinRatioInput}
-                onChangeText={setProteinRatioInput}
-                keyboardType="number-pad"
-                placeholder="30"
-                placeholderTextColor={colors.textMuted}
+          {!isEditingTargets ? (
+            <>
+              <ThemedView
                 style={[
-                  styles.input,
+                  styles.previewCard,
                   {
-                    color: colors.text,
                     backgroundColor: colors.background,
                     borderColor: colors.border,
                   },
                 ]}
-              />
-            </View>
+              >
+                <ThemedText style={styles.previewTitle}>Current Defaults</ThemedText>
 
-            <View style={styles.ratioField}>
-              <ThemedText variant="textMuted" style={styles.ratioLabel}>
-                Carbs
+                {savedTargetSettings ? (
+                  <>
+                    <ThemedText variant="textMuted" style={styles.previewText}>
+                      Calories: {savedTargetSettings.targetCalories}
+                    </ThemedText>
+                    <ThemedText variant="textMuted" style={styles.previewText}>
+                      Ratios: {savedTargetSettings.proteinRatioPct}% protein • {savedTargetSettings.carbRatioPct}% carbs • {savedTargetSettings.fatRatioPct}% fats
+                    </ThemedText>
+                    <ThemedText variant="textMuted" style={styles.previewText}>
+                      Protein: {savedTargetSettings.targetProtein} g
+                    </ThemedText>
+                    <ThemedText variant="textMuted" style={styles.previewText}>
+                      Carbs: {savedTargetSettings.targetCarbs} g
+                    </ThemedText>
+                    <ThemedText variant="textMuted" style={styles.previewText}>
+                      Fats: {savedTargetSettings.targetFats} g
+                    </ThemedText>
+                  </>
+                ) : (
+                  <ThemedText variant="textMuted" style={styles.previewText}>
+                    No default targets set yet.
+                  </ThemedText>
+                )}
+              </ThemedView>
+
+              <ThemedText variant="textMuted" style={styles.helperText}>
+                Applies to today and future days. Past days stay unchanged.
               </ThemedText>
-              <TextInput
-                value={carbRatioInput}
-                onChangeText={setCarbRatioInput}
-                keyboardType="number-pad"
-                placeholder="40"
-                placeholderTextColor={colors.textMuted}
+
+              <TouchableOpacity
+                style={[styles.primaryButton, { backgroundColor: colors.primary }]}
+                onPress={handleStartEditingTargets}
+              >
+                <ThemedText style={[styles.primaryButtonText, { color: colors.buttonText }]}>
+                  {savedTargetSettings ? 'Edit Targets' : 'Set Targets'}
+                </ThemedText>
+              </TouchableOpacity>
+            </>
+          ) : (
+            <>
+              <View style={styles.fieldGroup}>
+                <ThemedText style={styles.label}>Target Calories</ThemedText>
+                <TextInput
+                  value={targetCaloriesInput}
+                  onChangeText={setTargetCaloriesInput}
+                  keyboardType="number-pad"
+                  placeholder="1500"
+                  placeholderTextColor={colors.textMuted}
+                  style={[
+                    styles.input,
+                    {
+                      color: colors.text,
+                      backgroundColor: colors.background,
+                      borderColor: colors.border,
+                    },
+                  ]}
+                />
+              </View>
+
+              <ThemedText style={styles.label}>Macro Ratios (%)</ThemedText>
+              <View style={styles.ratioRow}>
+                <View style={styles.ratioField}>
+                  <ThemedText variant="textMuted" style={styles.ratioLabel}>
+                    Protein
+                  </ThemedText>
+                  <TextInput
+                    value={proteinRatioInput}
+                    onChangeText={setProteinRatioInput}
+                    keyboardType="number-pad"
+                    placeholder="30"
+                    placeholderTextColor={colors.textMuted}
+                    style={[
+                      styles.input,
+                      {
+                        color: colors.text,
+                        backgroundColor: colors.background,
+                        borderColor: colors.border,
+                      },
+                    ]}
+                  />
+                </View>
+
+                <View style={styles.ratioField}>
+                  <ThemedText variant="textMuted" style={styles.ratioLabel}>
+                    Carbs
+                  </ThemedText>
+                  <TextInput
+                    value={carbRatioInput}
+                    onChangeText={setCarbRatioInput}
+                    keyboardType="number-pad"
+                    placeholder="40"
+                    placeholderTextColor={colors.textMuted}
+                    style={[
+                      styles.input,
+                      {
+                        color: colors.text,
+                        backgroundColor: colors.background,
+                        borderColor: colors.border,
+                      },
+                    ]}
+                  />
+                </View>
+
+                <View style={styles.ratioField}>
+                  <ThemedText variant="textMuted" style={styles.ratioLabel}>
+                    Fats
+                  </ThemedText>
+                  <TextInput
+                    value={fatRatioInput}
+                    onChangeText={setFatRatioInput}
+                    keyboardType="number-pad"
+                    placeholder="30"
+                    placeholderTextColor={colors.textMuted}
+                    style={[
+                      styles.input,
+                      {
+                        color: colors.text,
+                        backgroundColor: colors.background,
+                        borderColor: colors.border,
+                      },
+                    ]}
+                  />
+                </View>
+              </View>
+
+              <ThemedText
                 style={[
-                  styles.input,
+                  styles.ratioTotalText,
                   {
-                    color: colors.text,
+                    color:
+                      ratioTotal === 100 || proteinRatioInput === '' || carbRatioInput === '' || fatRatioInput === ''
+                        ? colors.textMuted
+                        : colors.danger,
+                  },
+                ]}
+              >
+                Ratio total: {ratioTotal}%
+              </ThemedText>
+
+              <ThemedView
+                style={[
+                  styles.previewCard,
+                  {
                     backgroundColor: colors.background,
                     borderColor: colors.border,
                   },
                 ]}
-              />
-            </View>
+              >
+                <ThemedText style={styles.previewTitle}>Derived Macro Targets</ThemedText>
 
-            <View style={styles.ratioField}>
-              <ThemedText variant="textMuted" style={styles.ratioLabel}>
-                Fats
+                {derivedMacroPreview ? (
+                  <>
+                    <ThemedText variant="textMuted" style={styles.previewText}>
+                      Protein: {derivedMacroPreview.targetProtein} g
+                    </ThemedText>
+                    <ThemedText variant="textMuted" style={styles.previewText}>
+                      Carbs: {derivedMacroPreview.targetCarbs} g
+                    </ThemedText>
+                    <ThemedText variant="textMuted" style={styles.previewText}>
+                      Fats: {derivedMacroPreview.targetFats} g
+                    </ThemedText>
+                  </>
+                ) : (
+                  <ThemedText variant="textMuted" style={styles.previewText}>
+                    Enter valid calories and ratios that add up to 100%.
+                  </ThemedText>
+                )}
+              </ThemedView>
+
+              <ThemedText variant="textMuted" style={styles.helperText}>
+                Applies to today and future days. Past days stay unchanged.
               </ThemedText>
-              <TextInput
-                value={fatRatioInput}
-                onChangeText={setFatRatioInput}
-                keyboardType="number-pad"
-                placeholder="30"
-                placeholderTextColor={colors.textMuted}
-                style={[
-                  styles.input,
-                  {
-                    color: colors.text,
-                    backgroundColor: colors.background,
-                    borderColor: colors.border,
-                  },
-                ]}
-              />
-            </View>
-          </View>
 
-          <ThemedText
-            style={[
-              styles.ratioTotalText,
-              {
-                color:
-                  ratioTotal === 100 || proteinRatioInput === '' || carbRatioInput === '' || fatRatioInput === ''
-                    ? colors.textMuted
-                    : colors.danger,
-              },
-            ]}
-          >
-            Ratio total: {ratioTotal}%
-          </ThemedText>
+              <View style={styles.actionRow}>
+                <TouchableOpacity
+                  style={[
+                    styles.cancelButton,
+                    {
+                      borderColor: colors.border,
+                    },
+                  ]}
+                  onPress={handleCancelEditingTargets}
+                  disabled={isSavingTargets}
+                >
+                  <ThemedText style={styles.cancelButtonText}>Cancel</ThemedText>
+                </TouchableOpacity>
 
-          <ThemedView
-            style={[
-              styles.previewCard,
-              {
-                backgroundColor: colors.background,
-                borderColor: colors.border,
-              },
-            ]}
-          >
-            <ThemedText style={styles.previewTitle}>Derived Macro Targets</ThemedText>
-
-            {derivedMacroPreview ? (
-              <>
-                <ThemedText variant="textMuted" style={styles.previewText}>
-                  Protein: {derivedMacroPreview.targetProtein} g
-                </ThemedText>
-                <ThemedText variant="textMuted" style={styles.previewText}>
-                  Carbs: {derivedMacroPreview.targetCarbs} g
-                </ThemedText>
-                <ThemedText variant="textMuted" style={styles.previewText}>
-                  Fats: {derivedMacroPreview.targetFats} g
-                </ThemedText>
-              </>
-            ) : (
-              <ThemedText variant="textMuted" style={styles.previewText}>
-                Enter valid calories and ratios that add up to 100%.
-              </ThemedText>
-            )}
-          </ThemedView>
-
-          <ThemedText variant="textMuted" style={styles.helperText}>
-            Saving updates your default targets and today&apos;s existing log, if it already exists. Past days remain unchanged.
-          </ThemedText>
-
-          <TouchableOpacity
-            style={[
-              styles.primaryButton,
-              {
-                backgroundColor: canSaveTargets ? colors.primary : colors.border,
-              },
-            ]}
-            onPress={handleSaveTargets}
-            disabled={!canSaveTargets}
-          >
-            <ThemedText style={[styles.primaryButtonText, { color: colors.buttonText }]}>
-              {isSavingTargets ? 'Saving...' : 'Save Targets'}
-            </ThemedText>
-          </TouchableOpacity>
+                <TouchableOpacity
+                  style={[
+                    styles.primaryButton,
+                    styles.actionButton,
+                    {
+                      backgroundColor: canSaveTargets ? colors.primary : colors.border,
+                    },
+                  ]}
+                  onPress={handleSaveTargets}
+                  disabled={!canSaveTargets}
+                >
+                  <ThemedText style={[styles.primaryButtonText, { color: colors.buttonText }]}>
+                    {isSavingTargets ? 'Saving...' : 'Save Targets'}
+                  </ThemedText>
+                </TouchableOpacity>
+              </View>
+            </>
+          )}
         </ThemedView>
 
         <ThemedView variant="surface" style={styles.card}>
@@ -513,6 +610,13 @@ const styles = StyleSheet.create({
     fontSize: 14,
     marginBottom: 4,
   },
+  actionRow: {
+    flexDirection: 'row',
+    gap: SPACING.sm,
+  },
+  actionButton: {
+    flex: 1,
+  },
   primaryButton: {
     paddingVertical: 14,
     borderRadius: 12,
@@ -529,6 +633,17 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   secondaryButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  cancelButton: {
+    flex: 1,
+    borderWidth: 1,
+    borderRadius: 12,
+    paddingVertical: 14,
+    alignItems: 'center',
+  },
+  cancelButtonText: {
     fontSize: 16,
     fontWeight: '600',
   },
