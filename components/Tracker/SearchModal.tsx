@@ -12,11 +12,9 @@ import { SPACING } from '@/constants/theme';
 import { useAppTheme } from '@/hooks/useAppTheme';
 import { USDA, type CleanFoodItem } from '@/lib/usda';
 import { mapUSDASearchResponseToCleanFoods } from '@/lib/usda.mapper';
-import {
-  calculateFavoriteMealTotals,
-  type FavoriteMealWithItems,
-} from '@/lib/favoriteMeals';
+import { type FavoriteMealWithItems } from '@/lib/favoriteMeals';
 import { scaleFoodForQuantity } from '@/lib/foodEntryMath';
+import FavoriteMealPickerList from '@/components/Favorites/FavoriteMealPickerList';
 import Icon from '@/components/Shared/Icon';
 import QuantityEditor from './QuantityEditor';
 import {
@@ -24,9 +22,7 @@ import {
   parseQuantityInput,
   QUANTITY_STEP,
 } from './quantityEditorUtils';
-import MealTypeFilterChips, {
-  type MealTypeFilter,
-} from '@/components/Favorites/MealTypeFilterChips';
+import { type MealTypeFilter } from '@/components/Favorites/MealTypeFilterChips';
 import { ThemedText } from '../Shared/ThemedText';
 import { ThemedView } from '../Shared/ThemedView';
 
@@ -276,105 +272,6 @@ export default function SearchModal({
       </View>
     );
   }
-  // This should be another component/moved outta here.
-  function renderFavoriteMealsContent() {
-    const filteredFavoriteMeals = favoriteMeals.filter((favoriteMeal) => {
-      if (favoriteFilter === 'All') {
-        return true;
-      }
-
-      return favoriteMeal.meal_type === favoriteFilter;
-    });
-
-    return (
-      <View style={styles.favoriteMealsContainer}>
-        <MealTypeFilterChips
-          value={favoriteFilter}
-          onChange={(nextFilter) => setFavoriteFilter(nextFilter as MealTypeFilter)}
-        />
-
-        {favoriteMeals.length === 0 ? (
-          <ThemedView style={styles.stateContainer}>
-            <ThemedText variant="textMuted" style={styles.stateText}>
-              No favorite meals yet. Create them from the Favorites tab.
-            </ThemedText>
-          </ThemedView>
-        ) : filteredFavoriteMeals.length === 0 ? (
-          <ThemedView style={styles.stateContainer}>
-            <ThemedText variant="textMuted" style={styles.stateText}>
-              No favorite meals for this filter yet.
-            </ThemedText>
-          </ThemedView>
-        ) : (
-          <FlatList
-            data={filteredFavoriteMeals}
-            keyExtractor={(item) => item.id}
-            showsVerticalScrollIndicator={false}
-            contentContainerStyle={styles.listContent}
-            renderItem={({ item }) => {
-              const totals = calculateFavoriteMealTotals(item);
-              const itemNames = item.items.map((favoriteItem) => favoriteItem.food_name);
-              const previewLine =
-                itemNames.length <= 2
-                  ? itemNames.join(', ')
-                  : `${itemNames.slice(0, 2).join(', ')} +${itemNames.length - 2} more`;
-
-              const isSubmitting = isSubmittingFavoriteMealId === item.id;
-
-              return (
-                <ThemedView variant="surface" style={styles.favoriteMealCard}>
-                  <View style={styles.favoriteMealRow}>
-                    <View style={styles.favoriteMealTextBlock}>
-                      <View style={styles.favoriteMealTitleRow}>
-                        <ThemedText style={styles.foodTitle}>{item.name}</ThemedText>
-
-                        <ThemedView
-                          style={[
-                            styles.favoriteMealChip,
-                            { backgroundColor: colors.iconSurface },
-                          ]}
-                        >
-                          <ThemedText
-                            variant="textMuted"
-                            style={styles.favoriteMealChipText}
-                          >
-                            {item.meal_type}
-                          </ThemedText>
-                        </ThemedView>
-                      </View>
-
-                      <ThemedText variant="textMuted" style={styles.metaText}>
-                        {previewLine}
-                      </ThemedText>
-
-                      <ThemedText variant="textMuted" style={styles.metaText}>
-                        {Math.round(totals.calories)} kcal • {Math.round(totals.protein)}P •{' '}
-                        {Math.round(totals.carbs)}C • {Math.round(totals.fat)}F
-                      </ThemedText>
-                    </View>
-
-                    <TouchableOpacity
-                      style={[styles.addButton, { backgroundColor: colors.primary }]}
-                      onPress={() => handleConfirmAddFavoriteMeal(item)}
-                      disabled={isSubmitting}
-                      activeOpacity={0.85}
-                    >
-                      {isSubmitting ? (
-                        <ActivityIndicator size="small" color={colors.buttonText} />
-                      ) : (
-                        <Icon name="add" size={22} color={colors.buttonText} />
-                      )}
-                    </TouchableOpacity>
-                  </View>
-                </ThemedView>
-              );
-            }}
-          />
-        )}
-      </View>
-    );
-  }
-
   // Decides what the modal should show below the search bar.
   function renderContent() {
     if (query.trim().length < 2) {
@@ -532,7 +429,15 @@ export default function SearchModal({
               <View style={styles.resultsContainer}>{renderContent()}</View>
             </>
           ) : (
-            <View style={styles.resultsContainer}>{renderFavoriteMealsContent()}</View>
+            <View style={styles.resultsContainer}>
+              <FavoriteMealPickerList
+                favoriteMeals={favoriteMeals}
+                favoriteFilter={favoriteFilter}
+                onChangeFilter={setFavoriteFilter}
+                onAddFavoriteMeal={handleConfirmAddFavoriteMeal}
+                isSubmittingFavoriteMealId={isSubmittingFavoriteMealId}
+              />
+            </View>
           )}
         </ThemedView>
       </ThemedView>
@@ -645,37 +550,6 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  favoriteMealsContainer: {
-    flex: 1,
-  },
-  favoriteMealCard: {
-    borderRadius: 18,
-    marginBottom: SPACING.sm,
-  },
-  favoriteMealRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: SPACING.md,
-  },
-  favoriteMealTextBlock: {
-    flex: 1,
-    marginRight: SPACING.md,
-  },
-  favoriteMealTitleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flexWrap: 'wrap',
-    gap: SPACING.sm,
-  },
-  favoriteMealChip: {
-    borderRadius: 999,
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-  },
-  favoriteMealChipText: {
-    fontSize: 12,
-    fontWeight: '600',
   },
   stateContainer: {
     paddingTop: SPACING.xl,
