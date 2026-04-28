@@ -1,4 +1,4 @@
-import { Alert, ScrollView, StyleSheet } from 'react-native';
+import { ScrollView, StyleSheet } from 'react-native';
 import DailySummary from '@/components/Tracker/DailySummary';
 import MealsRow from '@/components/Tracker/MealsRow';
 import FoodEntryItem from '@/components/Tracker/FoodEntryItem';
@@ -16,26 +16,10 @@ import SearchModal from '@/components/Tracker/SearchModal';
 import DateSwiper from '@/components/Tracker/DateSwiper';
 import { useAuth } from '@/contexts/AuthContext';
 import {
-  getDailyLogByDate,
-  getOrCreateDailyLog,
-  getProfileDefaultTargets,
-  type DailyLogTargetsInput,
-  updateDailyLogCaloriesBurned,
-} from '@/lib/dailyLogs';
-import {
-  addFoodEntry,
-  deleteFoodEntry,
-  getFoodEntriesForDailyLog,
   type FoodEntryRow,
   type MealType,
-  updateFoodEntry,
 } from '@/lib/foodEntries';
-
-// Normalizes a Date to local midnight.
-// This keeps date comparisons and UI state predictable.
-function startOfDay(date: Date) {
-  return new Date(date.getFullYear(), date.getMonth(), date.getDate());
-}
+import { useTrackerDay } from '@/hooks/useTrackerDay';
 
 // Formats the selected date for display in the UI.
 // Example: "Friday, Apr 25"
@@ -47,21 +31,6 @@ function formatSelectedDate(date: Date) {
   });
 }
 
-// Converts a JS Date into the YYYY-MM-DD format expected by your daily_logs table.
-// We build the string from local date parts so timezone offsets do not shift the day.
-function formatDateForDatabase(date: Date) {
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, '0');
-  const day = String(date.getDate()).padStart(2, '0');
-
-  return `${year}-${month}-${day}`;
-}
-
-// Small helper so all summary totals are rounded consistently.
-function roundToOneDecimal(value: number) {
-  return Math.round(value * 10) / 10;
-}
-
 // Temporary calorie split for meal rows.
 // We can make this user-configurable later if needed.
 const MEAL_CALORIE_SPLITS: Record<MealType, number> = {
@@ -71,63 +40,8 @@ const MEAL_CALORIE_SPLITS: Record<MealType, number> = {
   Snacks: 0.1,
 };
 
-// Computes the current consumed calories and macros from the day's food entries.
-function calculateNutritionTotals(entries: FoodEntryRow[]) {
-  return entries.reduce(
-    (totals, entry) => {
-      totals.calories += entry.calories;
-      totals.protein += entry.protein;
-      totals.carbs += entry.carbs;
-      totals.fat += entry.fat;
-      return totals;
-    },
-    {
-      calories: 0,
-      protein: 0,
-      carbs: 0,
-      fat: 0,
-    }
-  );
-}
-
-// Computes the current calories per meal from the selected day's food entries.
-function calculateMealCalories(entries: FoodEntryRow[]) {
-  return entries.reduce(
-    (totals, entry) => {
-      totals[entry.meal_type] += entry.calories;
-      return totals;
-    },
-    {
-      Breakfast: 0,
-      Lunch: 0,
-      Dinner: 0,
-      Snacks: 0,
-    } as Record<MealType, number>
-  );
-}
-
-// Groups food entries by meal type so the UI can render them under each meal section.
-// Because the DB query already sorts by created_at ascending, this preserves that order.
-function groupFoodEntriesByMeal(entries: FoodEntryRow[]) {
-  return entries.reduce(
-    (groups, entry) => {
-      groups[entry.meal_type].push(entry);
-      return groups;
-    },
-    {
-      Breakfast: [],
-      Lunch: [],
-      Dinner: [],
-      Snacks: [],
-    } as Record<MealType, FoodEntryRow[]>
-  );
-}
-
 const TrackerScreen = function () {
   const { session } = useAuth();
-
-  // Tracks which day the user is currently viewing.
-  const [selectedDate, setSelectedDate] = useState(startOfDay(new Date()));
 
   // Tracks whether the search modal is open.
   const [isSearchModalVisible, setIsSearchModalVisible] = useState(false);
@@ -135,30 +49,26 @@ const TrackerScreen = function () {
   // Tracks which meal the user is currently adding food to.
   const [activeMeal, setActiveMeal] = useState<MealType>('Breakfast');
 
-  // Stores the user's current default calorie/macro targets from profiles.
-  const [defaultTargets, setDefaultTargets] = useState<DailyLogTargetsInput | null>(null);
-
-  // Stores the selected day's snapshotted targets when a daily_log already exists.
-  // This is what preserves historical targets for past dates.
-  const [selectedDayTargets, setSelectedDayTargets] = useState<DailyLogTargetsInput | null>(null);
-
-  // Stores the selected day's current food entries.
-  const [foodEntries, setFoodEntries] = useState<FoodEntryRow[]>([]);
-
-  // Tracks the selected day's saved burned calories.
-  const [selectedDayCaloriesBurned, setSelectedDayCaloriesBurned] = useState(0);
-
-  // Helpful for day-specific updates without an extra fetch when a log already exists.
-  const [selectedDayLogId, setSelectedDayLogId] = useState<string | null>(null);
-
   // Only one existing food-entry editor should be open at a time.
   const [expandedFoodEntryId, setExpandedFoodEntryId] = useState<string | null>(null);
 
-  // Tracks whether the selected date is currently loading.
-  const [isDayLoading, setIsDayLoading] = useState(false);
-
-  // Tracks the save state for the burned-calories card.
-  const [isSavingCaloriesBurned, setIsSavingCaloriesBurned] = useState(false);
+  const {
+    selectedDate,
+    setSelectedDate,
+    nutritionTotals,
+    mealCalories,
+    groupedFoodEntries,
+    activeTargets,
+    activeTargetCalories,
+    selectedDayCaloriesBurned,
+    isSavingCaloriesBurned,
+    handleAddFood,
+    handleUpdateFoodEntry,
+    handleDeleteFoodEntry,
+    handleSaveCaloriesBurned,
+  } = useTrackerDay({
+    userId: session?.user?.id,
+  });
 
   function openSearchModal(mealLabel: MealType) {
     setActiveMeal(mealLabel);
@@ -174,185 +84,26 @@ const TrackerScreen = function () {
     setExpandedFoodEntryId((currentId) => (currentId === entryId ? null : entryId));
   }
 
-  // Updates one existing food entry by scaling calories/macros to match
-  // the new serving amount entered by the user.
-  async function handleUpdateFoodEntry(
+  // The expanded editor belongs to tracker UI state, so we close it here
+  // even though the actual update/delete work now lives in the hook.
+  async function handleUpdateExistingFoodEntry(
     entry: FoodEntryRow,
     nextServingSizeValue: number
   ) {
-    const currentServingSizeValue =
-      entry.serving_size_value && entry.serving_size_value > 0
-        ? entry.serving_size_value
-        : 1;
-
-    const ratio = nextServingSizeValue / currentServingSizeValue;
-
-    await updateFoodEntry(entry.id, {
-      servingSizeValue: roundToOneDecimal(nextServingSizeValue),
-      servingWeightGrams:
-        entry.serving_weight_grams != null
-          ? roundToOneDecimal(entry.serving_weight_grams * ratio)
-          : null,
-      calories: roundToOneDecimal(entry.calories * ratio),
-      protein: roundToOneDecimal(entry.protein * ratio),
-      carbs: roundToOneDecimal(entry.carbs * ratio),
-      fat: roundToOneDecimal(entry.fat * ratio),
-    });
-
     setExpandedFoodEntryId(null);
-    await loadSelectedDayData();
+    await handleUpdateFoodEntry(entry, nextServingSizeValue);
   }
 
-  // Deletes one existing food entry, then refreshes the selected day.
-  async function handleDeleteFoodEntry(entry: FoodEntryRow) {
+  async function handleDeleteExistingFoodEntry(entry: FoodEntryRow) {
     setExpandedFoodEntryId(null);
-    await deleteFoodEntry(entry.id);
-    await loadSelectedDayData();
+    await handleDeleteFoodEntry(entry);
   }
 
-  // Saves one day's manually entered burned calories.
-  // If the day has no log yet, we only create one when the value is meaningful.
-  async function handleSaveCaloriesBurned(caloriesBurned: number) {
-    try {
-      if (!session?.user?.id) {
-        Alert.alert('Not signed in', 'You must be signed in to save burned calories.');
-        return;
-      }
-
-      setIsSavingCaloriesBurned(true);
-
-      if (selectedDayLogId) {
-        await updateDailyLogCaloriesBurned(selectedDayLogId, caloriesBurned);
-        await loadSelectedDayData();
-        return;
-      }
-
-      // A zero value on a day with no daily_log does not need to create empty data.
-      if (caloriesBurned === 0) {
-        return;
-      }
-
-      const selectedDateString = formatDateForDatabase(selectedDate);
-      const dailyLog = await getOrCreateDailyLog(session.user.id, selectedDateString);
-
-      await updateDailyLogCaloriesBurned(dailyLog.id, caloriesBurned);
-      await loadSelectedDayData();
-    } catch (error) {
-      console.error('Error saving burned calories:', error);
-      Alert.alert('Error', 'Unable to save burned calories right now.');
-    } finally {
-      setIsSavingCaloriesBurned(false);
-    }
-  }
-
-  async function loadSelectedDayData() {
-    try {
-      if (!session?.user?.id) {
-        setSelectedDayLogId(null);
-        setSelectedDayTargets(null);
-        setSelectedDayCaloriesBurned(0);
-        setFoodEntries([]);
-        setExpandedFoodEntryId(null);
-        return;
-      }
-
-      setIsDayLoading(true);
-
-      const selectedDateString = formatDateForDatabase(selectedDate);
-      const dailyLog = await getDailyLogByDate(session.user.id, selectedDateString);
-
-      if (!dailyLog) {
-        setSelectedDayLogId(null);
-        setSelectedDayTargets(null);
-        setSelectedDayCaloriesBurned(0);
-        setFoodEntries([]);
-        setExpandedFoodEntryId(null);
-        return;
-      }
-
-      setSelectedDayLogId(dailyLog.id);
-      setSelectedDayCaloriesBurned(dailyLog.calories_burned ?? 0);
-
-      // Prefer the stored targets from this specific day whenever they exist.
-      setSelectedDayTargets({
-        targetCalories: dailyLog.target_calories,
-        targetProtein: dailyLog.target_protein,
-        targetCarbs: dailyLog.target_carbs,
-        targetFats: dailyLog.target_fats,
-      });
-
-      const entries = await getFoodEntriesForDailyLog(dailyLog.id);
-      setFoodEntries(entries);
-    } catch (error) {
-      console.error('Error loading selected day data:', error);
-      Alert.alert('Error', 'Unable to load food logs for this date.');
-    } finally {
-      setIsDayLoading(false);
-    }
-  }
-
-  useEffect(() => {
-    async function loadDefaultTargets() {
-      try {
-        if (!session?.user?.id) {
-          return;
-        }
-
-        const targets = await getProfileDefaultTargets(session.user.id);
-        setDefaultTargets(targets);
-      } catch (error) {
-        console.error('Error loading default targets:', error);
-      }
-    }
-
-    loadDefaultTargets();
-  }, [session?.user?.id]);
-
-  useEffect(() => {
-    loadSelectedDayData();
-  }, [session?.user?.id, selectedDate]);
-
-  async function handleAddFood(
+  async function handleAddFoodForActiveMeal(
     food: CleanFoodItem,
     quantityMultiplier: number
   ) {
-    try {
-      if (!session?.user?.id) {
-        Alert.alert('Not signed in', 'You must be signed in to add food.');
-        return;
-      }
-
-      const selectedDateString = formatDateForDatabase(selectedDate);
-
-      const dailyLog = await getOrCreateDailyLog(
-        session.user.id,
-        selectedDateString
-      );
-
-      const insertedFoodEntry = await addFoodEntry({
-        dailyLogId: dailyLog.id,
-        mealType: activeMeal,
-        usdaFoodId: food.fdcId,
-        foodName: food.description,
-        servingSizeValue: roundToOneDecimal(food.servingSize * quantityMultiplier),
-        servingSizeUnit: food.servingSizeUnit,
-        servingWeightGrams:
-          food.servingSizeUnit.toLowerCase() === 'g'
-            ? roundToOneDecimal(food.servingSize * quantityMultiplier)
-            : null,
-        calories: roundToOneDecimal(food.calories * quantityMultiplier),
-        protein: roundToOneDecimal(food.protein * quantityMultiplier),
-        carbs: roundToOneDecimal(food.carbs * quantityMultiplier),
-        fat: roundToOneDecimal(food.fat * quantityMultiplier),
-      });
-
-      console.log('Inserted food entry:', insertedFoodEntry);
-
-      await loadSelectedDayData();
-    } catch (error) {
-      console.error('Error adding food:', error);
-      Alert.alert('Error', 'Unable to add food right now.');
-    }
+    await handleAddFood(food, activeMeal, quantityMultiplier);
   }
 
   useEffect(() => {
@@ -372,11 +123,10 @@ const TrackerScreen = function () {
     testApi();
   }, []);
 
-  const nutritionTotals = calculateNutritionTotals(foodEntries);
-  const mealCalories = calculateMealCalories(foodEntries);
-  const groupedFoodEntries = groupFoodEntriesByMeal(foodEntries);
-  const activeTargets = selectedDayTargets ?? defaultTargets;
-  const activeTargetCalories = activeTargets?.targetCalories ?? 0;
+  // Switching days should collapse any open inline food editor.
+  useEffect(() => {
+    setExpandedFoodEntryId(null);
+  }, [selectedDate]);
 
   return (
     <ThemedView variant="background" style={styles.screen}>
@@ -398,18 +148,18 @@ const TrackerScreen = function () {
         <DailySummary
           dietName="Target Calories"
           targetCalories={activeTargetCalories}
-          consumedCalories={roundToOneDecimal(nutritionTotals.calories)}
+          consumedCalories={nutritionTotals.calories}
           burnedCalories={selectedDayCaloriesBurned}
           carbs={{
-            current: roundToOneDecimal(nutritionTotals.carbs),
+            current: nutritionTotals.carbs,
             max: activeTargets?.targetCarbs ?? 0,
           }}
           protein={{
-            current: roundToOneDecimal(nutritionTotals.protein),
+            current: nutritionTotals.protein,
             max: activeTargets?.targetProtein ?? 0,
           }}
           fat={{
-            current: roundToOneDecimal(nutritionTotals.fat),
+            current: nutritionTotals.fat,
             max: activeTargets?.targetFats ?? 0,
           }}
         />
@@ -420,7 +170,7 @@ const TrackerScreen = function () {
 
         <MealsRow
           title="Breakfast"
-          currentCalories={roundToOneDecimal(mealCalories.Breakfast)}
+          currentCalories={mealCalories.Breakfast}
           maxCalories={Math.round(activeTargetCalories * MEAL_CALORIE_SPLITS.Breakfast)}
           iconName="cafe"
           onAddPress={() => openSearchModal('Breakfast')}
@@ -431,14 +181,14 @@ const TrackerScreen = function () {
             entry={entry}
             isExpanded={expandedFoodEntryId === entry.id}
             onToggleExpanded={() => toggleFoodEntryEditor(entry.id)}
-            onUpdateEntry={handleUpdateFoodEntry}
-            onDeleteEntry={handleDeleteFoodEntry}
+            onUpdateEntry={handleUpdateExistingFoodEntry}
+            onDeleteEntry={handleDeleteExistingFoodEntry}
           />
         ))}
 
         <MealsRow
           title="Lunch"
-          currentCalories={roundToOneDecimal(mealCalories.Lunch)}
+          currentCalories={mealCalories.Lunch}
           maxCalories={Math.round(activeTargetCalories * MEAL_CALORIE_SPLITS.Lunch)}
           iconName="fast-food"
           onAddPress={() => openSearchModal('Lunch')}
@@ -449,14 +199,14 @@ const TrackerScreen = function () {
             entry={entry}
             isExpanded={expandedFoodEntryId === entry.id}
             onToggleExpanded={() => toggleFoodEntryEditor(entry.id)}
-            onUpdateEntry={handleUpdateFoodEntry}
-            onDeleteEntry={handleDeleteFoodEntry}
+            onUpdateEntry={handleUpdateExistingFoodEntry}
+            onDeleteEntry={handleDeleteExistingFoodEntry}
           />
         ))}
 
         <MealsRow
           title="Dinner"
-          currentCalories={roundToOneDecimal(mealCalories.Dinner)}
+          currentCalories={mealCalories.Dinner}
           maxCalories={Math.round(activeTargetCalories * MEAL_CALORIE_SPLITS.Dinner)}
           iconName="restaurant"
           onAddPress={() => openSearchModal('Dinner')}
@@ -467,14 +217,14 @@ const TrackerScreen = function () {
             entry={entry}
             isExpanded={expandedFoodEntryId === entry.id}
             onToggleExpanded={() => toggleFoodEntryEditor(entry.id)}
-            onUpdateEntry={handleUpdateFoodEntry}
-            onDeleteEntry={handleDeleteFoodEntry}
+            onUpdateEntry={handleUpdateExistingFoodEntry}
+            onDeleteEntry={handleDeleteExistingFoodEntry}
           />
         ))}
 
         <MealsRow
           title="Snacks"
-          currentCalories={roundToOneDecimal(mealCalories.Snacks)}
+          currentCalories={mealCalories.Snacks}
           maxCalories={Math.round(activeTargetCalories * MEAL_CALORIE_SPLITS.Snacks)}
           iconName="fast-food"
           onAddPress={() => openSearchModal('Snacks')}
@@ -485,8 +235,8 @@ const TrackerScreen = function () {
             entry={entry}
             isExpanded={expandedFoodEntryId === entry.id}
             onToggleExpanded={() => toggleFoodEntryEditor(entry.id)}
-            onUpdateEntry={handleUpdateFoodEntry}
-            onDeleteEntry={handleDeleteFoodEntry}
+            onUpdateEntry={handleUpdateExistingFoodEntry}
+            onDeleteEntry={handleDeleteExistingFoodEntry}
           />
         ))}
 
@@ -501,7 +251,7 @@ const TrackerScreen = function () {
         visible={isSearchModalVisible}
         mealLabel={activeMeal}
         onClose={closeSearchModal}
-        onAddFood={handleAddFood}
+        onAddFood={handleAddFoodForActiveMeal}
         pageSize={10}
       />
     </ThemedView>
