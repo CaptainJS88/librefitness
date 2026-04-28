@@ -92,12 +92,12 @@ export default function FavoriteMealListItem({
 
         <View style={styles.actionsColumn}>
           <TouchableOpacity
-            style={[styles.menuButton, { borderColor: colors.border }]}
+            style={[styles.editButton, { backgroundColor: colors.background }]}
             onPress={onToggleMenu}
             activeOpacity={0.85}
             disabled={isAdding}
           >
-            <Icon name="create-outline" size={18} color={colors.textMuted} />
+            <Icon name="pencil" size={18} variant="muted" />
           </TouchableOpacity>
 
           <TouchableOpacity
@@ -222,6 +222,13 @@ const styles = StyleSheet.create({
     height: 36,
     borderRadius: 18,
     borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  editButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
     alignItems: 'center',
     justifyContent: 'center',
   },
