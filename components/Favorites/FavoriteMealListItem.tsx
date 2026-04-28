@@ -78,7 +78,7 @@ export default function FavoriteMealListItem({
           onPress={onToggleMenu}
           activeOpacity={0.85}
         >
-          <Icon name="ellipsis-horizontal" size={18} color={colors.textMuted} />
+          <Icon name="create-outline" size={18} color={colors.textMuted} />
         </TouchableOpacity>
       </View>
 
