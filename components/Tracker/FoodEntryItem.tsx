@@ -162,6 +162,7 @@ export default function FoodEntryItem({
           secondaryButtonLabel="Delete"
           onPressSecondary={handleDelete}
           isSecondaryDisabled={isSaving || isDeleting}
+          secondaryButtonVariant="danger"
         />
       ) : null}
     </ThemedView>

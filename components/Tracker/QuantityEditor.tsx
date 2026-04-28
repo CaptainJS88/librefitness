@@ -20,6 +20,7 @@ type QuantityEditorProps = {
   secondaryButtonLabel?: string;
   onPressSecondary?: () => void;
   isSecondaryDisabled?: boolean;
+  secondaryButtonVariant?: 'default' | 'danger';
 };
 
 // Reusable quantity editor for both:
@@ -40,6 +41,7 @@ export default function QuantityEditor({
   secondaryButtonLabel,
   onPressSecondary,
   isSecondaryDisabled = false,
+  secondaryButtonVariant = 'default',
 }: QuantityEditorProps) {
   const { colors } = useAppTheme();
 
@@ -95,14 +97,27 @@ export default function QuantityEditor({
             style={[
               styles.secondaryButton,
               {
-                borderColor: colors.border,
+                borderColor:
+                  secondaryButtonVariant === 'danger' ? colors.danger : colors.border,
+                backgroundColor:
+                  secondaryButtonVariant === 'danger' ? colors.danger : 'transparent',
                 opacity: isSecondaryDisabled ? 0.5 : 1,
               },
             ]}
             onPress={onPressSecondary}
             disabled={isSecondaryDisabled}
           >
-            <ThemedText style={styles.secondaryButtonText}>
+            <ThemedText
+              style={[
+                styles.secondaryButtonText,
+                {
+                  color:
+                    secondaryButtonVariant === 'danger'
+                      ? colors.buttonText
+                      : colors.text,
+                },
+              ]}
+            >
               {secondaryButtonLabel}
             </ThemedText>
           </TouchableOpacity>
