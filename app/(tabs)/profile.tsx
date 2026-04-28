@@ -3,6 +3,7 @@ import {
   Alert,
   ScrollView,
   StyleSheet,
+  Switch,
   TextInput,
   TouchableOpacity,
   View,
@@ -64,7 +65,7 @@ function parseRatioInput(value: string) {
 const ProfileScreen = function () {
   const { session } = useAuth();
   const { toggleTheme } = useThemeStore();
-  const { colors } = useAppTheme();
+  const { theme, colors } = useAppTheme();
 
   const [targetCaloriesInput, setTargetCaloriesInput] = useState('');
   const [proteinRatioInput, setProteinRatioInput] = useState('');
@@ -508,15 +509,30 @@ const ProfileScreen = function () {
         </ThemedView>
 
         <ThemedView variant="surface" style={styles.card}>
-          <ThemedText style={styles.cardTitle}>Appearance</ThemedText>
-          <TouchableOpacity
-            style={[styles.secondaryButton, { borderColor: colors.border }]}
-            onPress={toggleTheme}
+          <View
+            style={[
+              styles.switchRow,
+              {
+                borderColor: colors.border,
+                backgroundColor: colors.background,
+              },
+            ]}
           >
-            <ThemedText style={styles.secondaryButtonText}>Toggle Theme</ThemedText>
-          </TouchableOpacity>
-        </ThemedView>
+            <ThemedText style={styles.secondaryButtonText}>Dark Mode</ThemedText>
 
+            {/* Native switch keeps the interaction simple and familiar. */}
+            <Switch
+              value={theme === 'dark'}
+              onValueChange={toggleTheme}
+              trackColor={{ false: '#c4c4c4', true: '#FFFFFF' }}
+              thumbColor={'#FFFFFF'}
+              ios_backgroundColor={colors.primary}
+            />
+          </View>
+        </ThemedView>
+      </ScrollView>
+
+      <View style={styles.footer}>
         <TouchableOpacity
           style={[styles.signOutButton, { backgroundColor: colors.danger }]}
           onPress={handleSignOut}
@@ -525,7 +541,7 @@ const ProfileScreen = function () {
             Sign Out
           </ThemedText>
         </TouchableOpacity>
-      </ScrollView>
+      </View>
     </ThemedView>
   );
 };
@@ -537,7 +553,7 @@ const styles = StyleSheet.create({
   content: {
     paddingTop: 60,
     paddingHorizontal: SPACING.md,
-    paddingBottom: 40,
+    paddingBottom: SPACING.lg,
   },
   headerText: {
     fontSize: 28,
@@ -663,6 +679,15 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
   },
+  switchRow: {
+    borderWidth: 1,
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
   cancelButton: {
     flex: 1,
     borderWidth: 1,
@@ -673,6 +698,10 @@ const styles = StyleSheet.create({
   cancelButtonText: {
     fontSize: 16,
     fontWeight: '600',
+  },
+  footer: {
+    paddingHorizontal: SPACING.md,
+    paddingBottom: SPACING.lg,
   },
   signOutButton: {
     paddingVertical: 14,
