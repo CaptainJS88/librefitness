@@ -83,7 +83,7 @@ export default function FavoriteMealListItem({
       </View>
 
       {isMenuOpen ? (
-        <View style={[styles.menuRow, { borderTopColor: colors.border }]}>
+        <View style={styles.menuRow}>
           <TouchableOpacity
             style={[styles.menuActionButton, { borderColor: colors.border }]}
             onPress={onEdit}
@@ -157,7 +157,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   menuRow: {
-    borderTopWidth: 1,
     flexDirection: 'row',
     gap: SPACING.sm,
     paddingHorizontal: SPACING.md,
