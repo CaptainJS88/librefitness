@@ -2,6 +2,7 @@ import { Alert, ScrollView, StyleSheet } from 'react-native';
 import DailySummary from '@/components/Tracker/DailySummary';
 import MealsRow from '@/components/Tracker/MealsRow';
 import FoodEntryItem from '@/components/Tracker/FoodEntryItem';
+import CaloriesBurnedCard from '@/components/Tracker/CaloriesBurnedCard';
 import { SPACING } from '@/constants/theme';
 import { USDA, type CleanFoodItem } from '@/lib/usda';
 import { ThemedText } from '@/components/Shared/ThemedText';
@@ -19,6 +20,7 @@ import {
   getOrCreateDailyLog,
   getProfileDefaultTargets,
   type DailyLogTargetsInput,
+  updateDailyLogCaloriesBurned,
 } from '@/lib/dailyLogs';
 import {
   addFoodEntry,
@@ -143,11 +145,20 @@ const TrackerScreen = function () {
   // Stores the selected day's current food entries.
   const [foodEntries, setFoodEntries] = useState<FoodEntryRow[]>([]);
 
+  // Tracks the selected day's saved burned calories.
+  const [selectedDayCaloriesBurned, setSelectedDayCaloriesBurned] = useState(0);
+
+  // Helpful for day-specific updates without an extra fetch when a log already exists.
+  const [selectedDayLogId, setSelectedDayLogId] = useState<string | null>(null);
+
   // Only one existing food-entry editor should be open at a time.
   const [expandedFoodEntryId, setExpandedFoodEntryId] = useState<string | null>(null);
 
   // Tracks whether the selected date is currently loading.
   const [isDayLoading, setIsDayLoading] = useState(false);
+
+  // Tracks the save state for the burned-calories card.
+  const [isSavingCaloriesBurned, setIsSavingCaloriesBurned] = useState(false);
 
   function openSearchModal(mealLabel: MealType) {
     setActiveMeal(mealLabel);
@@ -199,10 +210,47 @@ const TrackerScreen = function () {
     await loadSelectedDayData();
   }
 
+  // Saves one day's manually entered burned calories.
+  // If the day has no log yet, we only create one when the value is meaningful.
+  async function handleSaveCaloriesBurned(caloriesBurned: number) {
+    try {
+      if (!session?.user?.id) {
+        Alert.alert('Not signed in', 'You must be signed in to save burned calories.');
+        return;
+      }
+
+      setIsSavingCaloriesBurned(true);
+
+      if (selectedDayLogId) {
+        await updateDailyLogCaloriesBurned(selectedDayLogId, caloriesBurned);
+        await loadSelectedDayData();
+        return;
+      }
+
+      // A zero value on a day with no daily_log does not need to create empty data.
+      if (caloriesBurned === 0) {
+        return;
+      }
+
+      const selectedDateString = formatDateForDatabase(selectedDate);
+      const dailyLog = await getOrCreateDailyLog(session.user.id, selectedDateString);
+
+      await updateDailyLogCaloriesBurned(dailyLog.id, caloriesBurned);
+      await loadSelectedDayData();
+    } catch (error) {
+      console.error('Error saving burned calories:', error);
+      Alert.alert('Error', 'Unable to save burned calories right now.');
+    } finally {
+      setIsSavingCaloriesBurned(false);
+    }
+  }
+
   async function loadSelectedDayData() {
     try {
       if (!session?.user?.id) {
+        setSelectedDayLogId(null);
         setSelectedDayTargets(null);
+        setSelectedDayCaloriesBurned(0);
         setFoodEntries([]);
         setExpandedFoodEntryId(null);
         return;
@@ -214,11 +262,16 @@ const TrackerScreen = function () {
       const dailyLog = await getDailyLogByDate(session.user.id, selectedDateString);
 
       if (!dailyLog) {
+        setSelectedDayLogId(null);
         setSelectedDayTargets(null);
+        setSelectedDayCaloriesBurned(0);
         setFoodEntries([]);
         setExpandedFoodEntryId(null);
         return;
       }
+
+      setSelectedDayLogId(dailyLog.id);
+      setSelectedDayCaloriesBurned(dailyLog.calories_burned ?? 0);
 
       // Prefer the stored targets from this specific day whenever they exist.
       setSelectedDayTargets({
@@ -304,7 +357,7 @@ const TrackerScreen = function () {
 
   useEffect(() => {
     async function testApi() {
-      const response = await USDA.searchFoods('apple');
+      const response = await USDA.searchFoods('bacon');
       console.log('Raw data from USDA', response);
 
       if (response?.foods?.[0]) {
@@ -346,7 +399,7 @@ const TrackerScreen = function () {
           dietName="Target Calories"
           targetCalories={activeTargetCalories}
           consumedCalories={roundToOneDecimal(nutritionTotals.calories)}
-          burnedCalories={0}
+          burnedCalories={selectedDayCaloriesBurned}
           carbs={{
             current: roundToOneDecimal(nutritionTotals.carbs),
             max: activeTargets?.targetCarbs ?? 0,
@@ -436,6 +489,12 @@ const TrackerScreen = function () {
             onDeleteEntry={handleDeleteFoodEntry}
           />
         ))}
+
+        <CaloriesBurnedCard
+          caloriesBurned={selectedDayCaloriesBurned}
+          isSaving={isSavingCaloriesBurned}
+          onSave={handleSaveCaloriesBurned}
+        />
       </ScrollView>
 
       <SearchModal

@@ -10,6 +10,7 @@ export type DailyLogRow = {
   target_protein: number;
   target_fats: number;
   target_carbs: number;
+  calories_burned: number;
 };
 
 export type ProfileDefaultTargetsRow = {
@@ -164,6 +165,28 @@ export async function updateDailyLogTargets(
 
   if (error) {
     throw new Error(`Failed to update daily log targets: ${error.message}`);
+  }
+
+  return data;
+}
+
+// Updates the manually entered burned calories for one day.
+// Later, this can coexist with richer exercise-entry data if needed.
+export async function updateDailyLogCaloriesBurned(
+  dailyLogId: string,
+  caloriesBurned: number
+): Promise<DailyLogRow> {
+  const { data, error } = await supabase
+    .from('daily_logs')
+    .update({
+      calories_burned: caloriesBurned,
+    })
+    .eq('id', dailyLogId)
+    .select()
+    .single();
+
+  if (error) {
+    throw new Error(`Failed to update burned calories: ${error.message}`);
   }
 
   return data;

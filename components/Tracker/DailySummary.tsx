@@ -69,12 +69,13 @@ export default function DailySummary({
 }: DailySummaryProps) {
   const { colors } = useAppTheme();
 
-  const caloriesLeft = targetCalories - consumedCalories + burnedCalories;
+  const effectiveTargetCalories = targetCalories + burnedCalories;
+  const caloriesLeft = effectiveTargetCalories - consumedCalories;
   const isOverTarget = caloriesLeft < 0;
   const displayCaloriesDelta = Math.round(Math.abs(caloriesLeft));
   const ringFill =
-    targetCalories > 0
-      ? Math.min((consumedCalories / targetCalories) * 100, 100)
+    effectiveTargetCalories > 0
+      ? Math.min((consumedCalories / effectiveTargetCalories) * 100, 100)
       : 0;
 
   return (
