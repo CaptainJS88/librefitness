@@ -7,6 +7,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import Icon from '@/components/Shared/Icon';
 import { useAuth } from '@/contexts/AuthContext';
 import { SPACING } from '@/constants/theme';
 import { useAppTheme } from '@/hooks/useAppTheme';
@@ -283,61 +284,59 @@ const ProfileScreen = function () {
         </ThemedText>
 
         <ThemedView variant="surface" style={styles.card}>
-          <ThemedText style={styles.cardTitle}>Default Targets</ThemedText>
-          <ThemedText variant="textMuted" style={styles.helperText}>
-            Set your daily calorie target and macro ratios. We will derive the gram targets automatically.
-          </ThemedText>
+          <View style={styles.cardHeaderRow}>
+            <ThemedText style={styles.cardTitle}>Default Targets</ThemedText>
+
+            {!isEditingTargets ? (
+              <TouchableOpacity
+                style={[styles.iconButton, { backgroundColor: colors.background }]}
+                onPress={handleStartEditingTargets}
+                activeOpacity={0.8}
+              >
+                <Icon name="pencil" size={18} variant="muted" />
+              </TouchableOpacity>
+            ) : null}
+          </View>
 
           {!isEditingTargets ? (
             <>
-              <ThemedView
-                style={[
-                  styles.previewCard,
-                  {
-                    backgroundColor: colors.background,
-                    borderColor: colors.border,
-                  },
-                ]}
-              >
-                <ThemedText style={styles.previewTitle}>Current Defaults</ThemedText>
-
-                {savedTargetSettings ? (
-                  <>
-                    <ThemedText variant="textMuted" style={styles.previewText}>
-                      Calories: {savedTargetSettings.targetCalories}
-                    </ThemedText>
-                    <ThemedText variant="textMuted" style={styles.previewText}>
-                      Ratios: {savedTargetSettings.proteinRatioPct}% protein • {savedTargetSettings.carbRatioPct}% carbs • {savedTargetSettings.fatRatioPct}% fats
-                    </ThemedText>
-                    <ThemedText variant="textMuted" style={styles.previewText}>
-                      Protein: {savedTargetSettings.targetProtein} g
-                    </ThemedText>
-                    <ThemedText variant="textMuted" style={styles.previewText}>
-                      Carbs: {savedTargetSettings.targetCarbs} g
-                    </ThemedText>
-                    <ThemedText variant="textMuted" style={styles.previewText}>
-                      Fats: {savedTargetSettings.targetFats} g
-                    </ThemedText>
-                  </>
-                ) : (
-                  <ThemedText variant="textMuted" style={styles.previewText}>
-                    No default targets set yet.
+              <View style={styles.summaryGrid}>
+                <View style={styles.summaryItem}>
+                  <ThemedText variant="textMuted" style={styles.summaryLabel}>
+                    Calories
                   </ThemedText>
-                )}
-              </ThemedView>
+                  <ThemedText style={styles.summaryValue}>
+                    {savedTargetSettings ? savedTargetSettings.targetCalories : '--'}
+                  </ThemedText>
+                </View>
 
-              <ThemedText variant="textMuted" style={styles.helperText}>
-                Applies to today and future days. Past days stay unchanged.
-              </ThemedText>
+                <View style={styles.summaryItem}>
+                  <ThemedText variant="textMuted" style={styles.summaryLabel}>
+                    Protein
+                  </ThemedText>
+                  <ThemedText style={styles.summaryValue}>
+                    {savedTargetSettings ? `${savedTargetSettings.targetProtein} g` : '-- g'}
+                  </ThemedText>
+                </View>
 
-              <TouchableOpacity
-                style={[styles.primaryButton, { backgroundColor: colors.primary }]}
-                onPress={handleStartEditingTargets}
-              >
-                <ThemedText style={[styles.primaryButtonText, { color: colors.buttonText }]}>
-                  {savedTargetSettings ? 'Edit Targets' : 'Set Targets'}
-                </ThemedText>
-              </TouchableOpacity>
+                <View style={styles.summaryItem}>
+                  <ThemedText variant="textMuted" style={styles.summaryLabel}>
+                    Carbs
+                  </ThemedText>
+                  <ThemedText style={styles.summaryValue}>
+                    {savedTargetSettings ? `${savedTargetSettings.targetCarbs} g` : '-- g'}
+                  </ThemedText>
+                </View>
+
+                <View style={styles.summaryItem}>
+                  <ThemedText variant="textMuted" style={styles.summaryLabel}>
+                    Fats
+                  </ThemedText>
+                  <ThemedText style={styles.summaryValue}>
+                    {savedTargetSettings ? `${savedTargetSettings.targetFats} g` : '-- g'}
+                  </ThemedText>
+                </View>
+              </View>
             </>
           ) : (
             <>
@@ -554,10 +553,22 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     marginBottom: SPACING.md,
   },
+  cardHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: SPACING.md,
+  },
   cardTitle: {
     fontSize: 20,
     fontWeight: '700',
-    marginBottom: 8,
+  },
+  iconButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   helperText: {
     fontSize: 13,
@@ -609,6 +620,22 @@ const styles = StyleSheet.create({
   previewText: {
     fontSize: 14,
     marginBottom: 4,
+  },
+  summaryGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: SPACING.md,
+  },
+  summaryItem: {
+    width: '47%',
+  },
+  summaryLabel: {
+    fontSize: 13,
+    marginBottom: 6,
+  },
+  summaryValue: {
+    fontSize: 16,
+    fontWeight: '600',
   },
   actionRow: {
     flexDirection: 'row',
