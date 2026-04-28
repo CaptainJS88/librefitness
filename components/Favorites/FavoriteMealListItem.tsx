@@ -1,10 +1,11 @@
-import { StyleSheet, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { SPACING } from '@/constants/theme';
 import { useAppTheme } from '@/hooks/useAppTheme';
 import {
   calculateFavoriteMealTotals,
   type FavoriteMealWithItems,
 } from '@/lib/favoriteMeals';
+import type { MealType } from '@/lib/foodEntries';
 import { ThemedText } from '../Shared/ThemedText';
 import { ThemedView } from '../Shared/ThemedView';
 import Icon from '../Shared/Icon';
@@ -12,11 +13,22 @@ import Icon from '../Shared/Icon';
 type FavoriteMealListItemProps = {
   favoriteMeal: FavoriteMealWithItems;
   isMenuOpen: boolean;
+  isAddPickerOpen: boolean;
+  isAddingToMealType: MealType | null;
   onPress: () => void;
   onToggleMenu: () => void;
+  onToggleAddPicker: () => void;
+  onAddToMealType: (mealType: MealType) => void;
   onEdit: () => void;
   onDelete: () => void;
 };
+
+const MEAL_TYPE_OPTIONS: MealType[] = [
+  'Breakfast',
+  'Lunch',
+  'Dinner',
+  'Snacks',
+];
 
 function buildItemsPreview(favoriteMeal: FavoriteMealWithItems) {
   const itemNames = favoriteMeal.items.map((item) => item.food_name);
@@ -32,13 +44,18 @@ function buildItemsPreview(favoriteMeal: FavoriteMealWithItems) {
 export default function FavoriteMealListItem({
   favoriteMeal,
   isMenuOpen,
+  isAddPickerOpen,
+  isAddingToMealType,
   onPress,
   onToggleMenu,
+  onToggleAddPicker,
+  onAddToMealType,
   onEdit,
   onDelete,
 }: FavoriteMealListItemProps) {
   const { colors } = useAppTheme();
   const totals = calculateFavoriteMealTotals(favoriteMeal);
+  const isAdding = isAddingToMealType != null;
 
   return (
     <ThemedView variant="surface" style={styles.card}>
@@ -73,14 +90,66 @@ export default function FavoriteMealListItem({
           </ThemedText>
         </TouchableOpacity>
 
-        <TouchableOpacity
-          style={[styles.menuButton, { borderColor: colors.border }]}
-          onPress={onToggleMenu}
-          activeOpacity={0.85}
-        >
-          <Icon name="create-outline" size={18} color={colors.textMuted} />
-        </TouchableOpacity>
+        <View style={styles.actionsColumn}>
+          <TouchableOpacity
+            style={[styles.menuButton, { borderColor: colors.border }]}
+            onPress={onToggleMenu}
+            activeOpacity={0.85}
+            disabled={isAdding}
+          >
+            <Icon name="create-outline" size={18} color={colors.textMuted} />
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[styles.addButton, { backgroundColor: colors.primary }]}
+            onPress={onToggleAddPicker}
+            activeOpacity={0.85}
+            disabled={isAdding}
+          >
+            <Icon name="add" size={18} color={colors.buttonText} />
+          </TouchableOpacity>
+        </View>
       </View>
+
+      {isAddPickerOpen ? (
+        <View style={styles.addPickerContainer}>
+          <ThemedText variant="textMuted" style={styles.addPickerLabel}>
+            Add to
+          </ThemedText>
+
+          <View style={styles.addPickerGrid}>
+            {MEAL_TYPE_OPTIONS.map((mealType) => {
+              const isSubmittingThisMealType = isAddingToMealType === mealType;
+
+              return (
+                <TouchableOpacity
+                  key={mealType}
+                  style={[
+                    styles.addPickerButton,
+                    {
+                      borderColor: colors.border,
+                      backgroundColor: isSubmittingThisMealType
+                        ? colors.primary
+                        : 'transparent',
+                    },
+                  ]}
+                  onPress={() => onAddToMealType(mealType)}
+                  disabled={isAdding}
+                  activeOpacity={0.85}
+                >
+                  {isSubmittingThisMealType ? (
+                    <ActivityIndicator size="small" color={colors.buttonText} />
+                  ) : (
+                    <ThemedText style={styles.addPickerButtonText}>
+                      {mealType}
+                    </ThemedText>
+                  )}
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+        </View>
+      ) : null}
 
       {isMenuOpen ? (
         <View style={styles.menuRow}>
@@ -156,11 +225,46 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  actionsColumn: {
+    gap: SPACING.sm,
+  },
+  addButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   menuRow: {
     flexDirection: 'row',
     gap: SPACING.sm,
     paddingHorizontal: SPACING.md,
     paddingBottom: SPACING.md,
+  },
+  addPickerContainer: {
+    paddingHorizontal: SPACING.md,
+    paddingBottom: SPACING.md,
+  },
+  addPickerLabel: {
+    fontSize: 13,
+    marginBottom: SPACING.sm,
+  },
+  addPickerGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: SPACING.sm,
+  },
+  addPickerButton: {
+    width: '48%',
+    borderWidth: 1,
+    borderRadius: 12,
+    paddingVertical: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  addPickerButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
   },
   menuActionButton: {
     flex: 1,

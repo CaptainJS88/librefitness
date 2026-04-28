@@ -12,9 +12,20 @@ import { SPACING } from '@/constants/theme';
 import { useAuth } from '@/contexts/AuthContext';
 import { useFavoriteMeals } from '@/hooks/useFavoriteMeals';
 import {
+  addFavoriteMealToDailyLog,
   deleteFavoriteMeal,
   type FavoriteMealWithItems,
 } from '@/lib/favoriteMeals';
+import { getOrCreateDailyLog } from '@/lib/dailyLogs';
+import type { MealType } from '@/lib/foodEntries';
+
+function formatDateForDatabase(date: Date) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+
+  return `${year}-${month}-${day}`;
+}
 
 const FavoritesScreen = function () {
   const { session } = useAuth();
@@ -24,6 +35,9 @@ const FavoritesScreen = function () {
 
   const [selectedFilter, setSelectedFilter] = useState<MealTypeFilter>('All');
   const [menuOpenMealId, setMenuOpenMealId] = useState<string | null>(null);
+  const [addPickerMealId, setAddPickerMealId] = useState<string | null>(null);
+  const [addingFavoriteMealId, setAddingFavoriteMealId] = useState<string | null>(null);
+  const [addingMealType, setAddingMealType] = useState<MealType | null>(null);
   const [editorVisible, setEditorVisible] = useState(false);
   const [editingMeal, setEditingMeal] = useState<FavoriteMealWithItems | null>(null);
 
@@ -37,13 +51,45 @@ const FavoritesScreen = function () {
 
   function openCreateEditor() {
     setEditingMeal(null);
+    setMenuOpenMealId(null);
+    setAddPickerMealId(null);
     setEditorVisible(true);
   }
 
   function openEditEditor(favoriteMeal: FavoriteMealWithItems) {
     setMenuOpenMealId(null);
+    setAddPickerMealId(null);
     setEditingMeal(favoriteMeal);
     setEditorVisible(true);
+  }
+
+  async function handleAddFavoriteMealToToday(
+    favoriteMeal: FavoriteMealWithItems,
+    mealType: MealType
+  ) {
+    try {
+      if (!session?.user?.id) {
+        Alert.alert('Not signed in', 'You must be signed in to add favorite meals.');
+        return;
+      }
+
+      setAddingFavoriteMealId(favoriteMeal.id);
+      setAddingMealType(mealType);
+
+      // Adding from the Favorites tab targets today's daily log for now,
+      // while still letting the user choose which meal section it belongs to.
+      const todayDateString = formatDateForDatabase(new Date());
+      const dailyLog = await getOrCreateDailyLog(session.user.id, todayDateString);
+
+      await addFavoriteMealToDailyLog(dailyLog.id, mealType, favoriteMeal);
+      setAddPickerMealId(null);
+    } catch (error) {
+      console.error('Error adding favorite meal to tracker:', error);
+      Alert.alert('Error', 'Unable to add favorite meal right now.');
+    } finally {
+      setAddingFavoriteMealId(null);
+      setAddingMealType(null);
+    }
   }
 
   async function handleDeleteMeal(favoriteMeal: FavoriteMealWithItems) {
@@ -129,11 +175,27 @@ const FavoritesScreen = function () {
                 key={favoriteMeal.id}
                 favoriteMeal={favoriteMeal}
                 isMenuOpen={menuOpenMealId === favoriteMeal.id}
+                isAddPickerOpen={addPickerMealId === favoriteMeal.id}
+                isAddingToMealType={
+                  addingFavoriteMealId === favoriteMeal.id ? addingMealType : null
+                }
                 onPress={() => openEditEditor(favoriteMeal)}
                 onToggleMenu={() =>
-                  setMenuOpenMealId((currentId) =>
+                  {
+                    setAddPickerMealId(null);
+                    setMenuOpenMealId((currentId) =>
+                      currentId === favoriteMeal.id ? null : favoriteMeal.id
+                    );
+                  }
+                }
+                onToggleAddPicker={() => {
+                  setMenuOpenMealId(null);
+                  setAddPickerMealId((currentId) =>
                     currentId === favoriteMeal.id ? null : favoriteMeal.id
-                  )
+                  );
+                }}
+                onAddToMealType={(mealType) =>
+                  handleAddFavoriteMealToToday(favoriteMeal, mealType)
                 }
                 onEdit={() => openEditEditor(favoriteMeal)}
                 onDelete={() => handleDeleteMeal(favoriteMeal)}
