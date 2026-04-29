@@ -12,11 +12,10 @@ import { SPACING } from '@/constants/theme';
 import { useAuth } from '@/contexts/AuthContext';
 import { useFavoriteMeals } from '@/hooks/useFavoriteMeals';
 import {
-  addFavoriteMealToDailyLog,
+  addFavoriteMealToDate,
   deleteFavoriteMeal,
   type FavoriteMealWithItems,
 } from '@/lib/favoriteMeals';
-import { getOrCreateDailyLog } from '@/lib/dailyLogs';
 import type { MealType } from '@/lib/foodEntries';
 
 function formatDateForDatabase(date: Date) {
@@ -79,9 +78,12 @@ const FavoritesScreen = function () {
       // Adding from the Favorites tab targets today's daily log for now,
       // while still letting the user choose which meal section it belongs to.
       const todayDateString = formatDateForDatabase(new Date());
-      const dailyLog = await getOrCreateDailyLog(session.user.id, todayDateString);
-
-      await addFavoriteMealToDailyLog(dailyLog.id, mealType, favoriteMeal);
+      await addFavoriteMealToDate({
+        userId: session.user.id,
+        date: todayDateString,
+        mealType,
+        favoriteMeal,
+      });
       setAddPickerMealId(null);
     } catch (error) {
       console.error('Error adding favorite meal to tracker:', error);

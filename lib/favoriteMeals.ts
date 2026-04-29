@@ -1,5 +1,6 @@
 import { supabase } from './supabase';
 import type { MealType } from './foodEntries';
+import { getOrCreateDailyLog } from './dailyLogs';
 
 export type FavoriteMealRow = {
   id: string;
@@ -55,6 +56,13 @@ export type UpdateFavoriteMealInput = {
   name: string;
   mealType: MealType;
   items: CreateFavoriteMealItemInput[];
+};
+
+export type AddFavoriteMealToDateInput = {
+  userId: string;
+  date: string;
+  mealType: MealType;
+  favoriteMeal: FavoriteMealWithItems;
 };
 
 type RawFavoriteMealWithItems = FavoriteMealRow & {
@@ -379,6 +387,21 @@ export async function addFavoriteMealToDailyLog(
   if (error) {
     throw new Error(`Failed to add favorite meal to daily log: ${error.message}`);
   }
+}
+
+// Shared orchestration helper so tracker and the Favorites tab both follow
+// the exact same rule: create the day's log if needed, then copy the template
+// items into real food_entries under the chosen meal section.
+export async function addFavoriteMealToDate(
+  input: AddFavoriteMealToDateInput
+): Promise<void> {
+  const dailyLog = await getOrCreateDailyLog(input.userId, input.date);
+
+  await addFavoriteMealToDailyLog(
+    dailyLog.id,
+    input.mealType,
+    input.favoriteMeal
+  );
 }
 
 export function calculateFavoriteMealTotals(favoriteMeal: FavoriteMealWithItems) {

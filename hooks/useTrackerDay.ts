@@ -22,7 +22,7 @@ import {
   updateFoodEntry,
 } from '@/lib/foodEntries';
 import {
-  addFavoriteMealToDailyLog,
+  addFavoriteMealToDate,
   type FavoriteMealWithItems,
 } from '@/lib/favoriteMeals';
 
@@ -229,8 +229,7 @@ export function useTrackerDay({ userId }: UseTrackerDayArgs) {
   }
 
   // Favorite meals are just batch inserts of saved snapshot items
-  // into the current day's real food_entries. 
-  // Is this repeated? 
+  // into the current day's real food_entries.
   async function handleAddFavoriteMeal(
     favoriteMeal: FavoriteMealWithItems,
     mealType: MealType
@@ -242,9 +241,12 @@ export function useTrackerDay({ userId }: UseTrackerDayArgs) {
       }
 
       const selectedDateString = formatDateForDatabase(selectedDate);
-      const dailyLog = await getOrCreateDailyLog(userId, selectedDateString);
-
-      await addFavoriteMealToDailyLog(dailyLog.id, mealType, favoriteMeal);
+      await addFavoriteMealToDate({
+        userId,
+        date: selectedDateString,
+        mealType,
+        favoriteMeal,
+      });
       await loadSelectedDayData();
     } catch (error) {
       console.error('Error adding favorite meal:', error);
