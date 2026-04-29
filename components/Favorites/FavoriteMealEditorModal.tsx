@@ -10,6 +10,7 @@ import {
 } from 'react-native';
 import { SPACING } from '@/constants/theme';
 import { useAppTheme } from '@/hooks/useAppTheme';
+import { useNotification } from '@/hooks/useNotification';
 import type { MealType } from '@/lib/foodEntries';
 import {
   createFavoriteMeal,
@@ -87,6 +88,7 @@ export default function FavoriteMealEditorModal({
   onSaved,
 }: FavoriteMealEditorModalProps) {
   const { colors } = useAppTheme();
+  const { showSuccess } = useNotification();
   const [mealName, setMealName] = useState('');
   const [mealType, setMealType] = useState<MealType>('Breakfast');
   const [draftItems, setDraftItems] = useState<FavoriteMealDraftItem[]>([]);
@@ -188,6 +190,9 @@ export default function FavoriteMealEditorModal({
       }
 
       await onSaved();
+      showSuccess(
+        favoriteMeal ? 'Favorite meal updated' : 'Favorite meal saved'
+      );
       onClose();
     } catch (error) {
       console.error('Error saving favorite meal:', error);

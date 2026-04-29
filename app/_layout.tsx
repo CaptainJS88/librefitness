@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { Slot, useRouter, useSegments } from 'expo-router';
 import { AuthProvider, useAuth } from '@/contexts/AuthContext';
+import { NotificationProvider } from '@/contexts/NotificationContext';
 
   // Wrapping everything inside AuthProvider
   const InitialLayout = () => {
@@ -32,7 +33,9 @@ import { AuthProvider, useAuth } from '@/contexts/AuthContext';
  
 export default function RootLayout() {
   return (
-    <AuthProvider>
-      <InitialLayout />
-    </AuthProvider>
+    <NotificationProvider>
+      <AuthProvider>
+        <InitialLayout />
+      </AuthProvider>
+    </NotificationProvider>
   );}

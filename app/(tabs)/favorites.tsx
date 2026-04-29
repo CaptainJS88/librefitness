@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { Alert, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
+import { Alert, Platform, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
 import FavoriteMealEditorModal from '@/components/Favorites/FavoriteMealEditorModal';
 import FavoriteMealListItem from '@/components/Favorites/FavoriteMealListItem';
 import MealTypeFilterChips, {
@@ -11,6 +11,7 @@ import { ThemedView } from '@/components/Shared/ThemedView';
 import { SPACING } from '@/constants/theme';
 import { useAuth } from '@/contexts/AuthContext';
 import { useFavoriteMeals } from '@/hooks/useFavoriteMeals';
+import { useNotification } from '@/hooks/useNotification';
 import { formatDateForDatabase } from '@/lib/dateUtils';
 import {
   addFavoriteMealToDate,
@@ -21,6 +22,7 @@ import type { MealType } from '@/lib/foodEntries';
 
 const FavoritesScreen = function () {
   const { session } = useAuth();
+  const { showSuccess } = useNotification();
   const { favoriteMeals, isLoadingFavoriteMeals, loadFavoriteMeals } = useFavoriteMeals({
     userId: session?.user?.id,
   });
@@ -78,6 +80,7 @@ const FavoritesScreen = function () {
         favoriteMeal,
       });
       setAddPickerMealId(null);
+      showSuccess('Favorite meal added');
     } catch (error) {
       console.error('Error adding favorite meal to tracker:', error);
       Alert.alert('Error', 'Unable to add favorite meal right now.');
@@ -88,6 +91,30 @@ const FavoritesScreen = function () {
   }
 
   async function handleDeleteMeal(favoriteMeal: FavoriteMealWithItems) {
+    async function performDelete() {
+      try {
+        await deleteFavoriteMeal(favoriteMeal.id);
+        setMenuOpenMealId(null);
+        await loadFavoriteMeals();
+        showSuccess('Favorite meal deleted');
+      } catch (error) {
+        console.error('Error deleting favorite meal:', error);
+        Alert.alert('Error', 'Unable to delete favorite meal right now.');
+      }
+    }
+
+    if (Platform.OS === 'web') {
+      const didConfirmDelete = window.confirm(
+        `Delete ${favoriteMeal.name}? This will not affect meals you already logged.`
+      );
+
+      if (didConfirmDelete) {
+        void performDelete();
+      }
+
+      return;
+    }
+
     Alert.alert(
       'Delete favorite meal',
       `Delete ${favoriteMeal.name}? This will not affect meals you already logged.`,
@@ -99,15 +126,8 @@ const FavoritesScreen = function () {
         {
           text: 'Delete',
           style: 'destructive',
-          onPress: async () => {
-            try {
-              await deleteFavoriteMeal(favoriteMeal.id);
-              setMenuOpenMealId(null);
-              await loadFavoriteMeals();
-            } catch (error) {
-              console.error('Error deleting favorite meal:', error);
-              Alert.alert('Error', 'Unable to delete favorite meal right now.');
-            }
+          onPress: () => {
+            void performDelete();
           },
         },
       ]

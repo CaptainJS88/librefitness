@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Alert } from 'react-native';
 import { formatDateForDatabase } from '@/lib/dateUtils';
+import { useNotification } from '@/hooks/useNotification';
 import {
   roundToOneDecimal,
   scaleFoodForQuantity,
@@ -108,6 +109,7 @@ function groupFoodEntriesByMeal(entries: FoodEntryRow[]) {
 }
 
 export function useTrackerDay({ userId }: UseTrackerDayArgs) {
+  const { showSuccess } = useNotification();
   const [selectedDate, setSelectedDate] = useState(startOfDay(new Date()));
   const [defaultTargets, setDefaultTargets] = useState<DailyLogTargetsInput | null>(null);
   const [selectedDayTargets, setSelectedDayTargets] = useState<DailyLogTargetsInput | null>(null);
@@ -214,6 +216,7 @@ export function useTrackerDay({ userId }: UseTrackerDayArgs) {
       });
 
       await loadSelectedDayData();
+      showSuccess('Food added');
     } catch (error) {
       console.error('Error adding food:', error);
       Alert.alert('Error', 'Unable to add food right now.');
@@ -240,6 +243,7 @@ export function useTrackerDay({ userId }: UseTrackerDayArgs) {
         favoriteMeal,
       });
       await loadSelectedDayData();
+      showSuccess('Favorite meal added');
     } catch (error) {
       console.error('Error adding favorite meal:', error);
       Alert.alert('Error', 'Unable to add favorite meal right now.');
@@ -273,6 +277,7 @@ export function useTrackerDay({ userId }: UseTrackerDayArgs) {
     });
 
     await loadSelectedDayData();
+    showSuccess('Meal updated');
   }
 
   async function handleDeleteFoodEntry(entry: FoodEntryRow) {
@@ -293,6 +298,7 @@ export function useTrackerDay({ userId }: UseTrackerDayArgs) {
       if (selectedDayLogId) {
         await updateDailyLogCaloriesBurned(selectedDayLogId, caloriesBurned);
         await loadSelectedDayData();
+        showSuccess('Burned calories saved');
         return;
       }
 
@@ -306,6 +312,7 @@ export function useTrackerDay({ userId }: UseTrackerDayArgs) {
 
       await updateDailyLogCaloriesBurned(dailyLog.id, caloriesBurned);
       await loadSelectedDayData();
+      showSuccess('Burned calories saved');
     } catch (error) {
       console.error('Error saving burned calories:', error);
       Alert.alert('Error', 'Unable to save burned calories right now.');

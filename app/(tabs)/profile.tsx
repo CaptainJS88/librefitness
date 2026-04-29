@@ -12,6 +12,7 @@ import Icon from '@/components/Shared/Icon';
 import { useAuth } from '@/contexts/AuthContext';
 import { SPACING } from '@/constants/theme';
 import { useAppTheme } from '@/hooks/useAppTheme';
+import { useNotification } from '@/hooks/useNotification';
 import { formatDateForDatabase } from '@/lib/dateUtils';
 import { supabase } from '@/lib/supabase';
 import {
@@ -57,6 +58,7 @@ const ProfileScreen = function () {
   const { session } = useAuth();
   const { toggleTheme } = useThemeStore();
   const { theme, colors } = useAppTheme();
+  const { showSuccess } = useNotification();
 
   const [targetCaloriesInput, setTargetCaloriesInput] = useState('');
   const [proteinRatioInput, setProteinRatioInput] = useState('');
@@ -254,7 +256,7 @@ const ProfileScreen = function () {
       }
 
       setIsEditingTargets(false);
-      Alert.alert('Saved', 'Your default targets have been updated.');
+      showSuccess('Targets updated');
     } catch (error) {
       console.error('Error saving profile target settings:', error);
       Alert.alert('Error', 'Unable to save target settings right now.');
