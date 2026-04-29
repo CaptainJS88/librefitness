@@ -12,6 +12,7 @@ import Icon from '@/components/Shared/Icon';
 import { useAuth } from '@/contexts/AuthContext';
 import { SPACING } from '@/constants/theme';
 import { useAppTheme } from '@/hooks/useAppTheme';
+import { formatDateForDatabase } from '@/lib/dateUtils';
 import { supabase } from '@/lib/supabase';
 import {
   getDailyLogByDate,
@@ -29,16 +30,6 @@ import {
 import { ThemedText } from '@/components/Shared/ThemedText';
 import { ThemedView } from '@/components/Shared/ThemedView';
 import { useThemeStore } from '@/store/useThemeStore';
-
-// Profile target settings only need local date parts because we are syncing
-// today's existing daily_log, not querying a time-specific timestamp.
-function formatDateForDatabase(date: Date) {
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, '0');
-  const day = String(date.getDate()).padStart(2, '0');
-
-  return `${year}-${month}-${day}`;
-}
 
 // Calories must be a positive number for the constrained target model to work.
 function parsePositiveNumberInput(value: string) {
