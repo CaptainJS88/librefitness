@@ -2,9 +2,7 @@ import { useEffect, useRef } from 'react';
 import {
   Animated,
   Easing,
-  Modal,
   StyleSheet,
-  View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { SPACING } from '@/constants/theme';
@@ -85,50 +83,52 @@ export default function NotificationHost({
   }
 
   return (
-    <Modal
-      visible
-      transparent
-      animationType="none"
-      statusBarTranslucent
-      presentationStyle="overFullScreen"
+    <Animated.View
+      pointerEvents="none"
+      style={[
+        styles.toastContainer,
+        {
+          top: insets.top + SPACING.md,
+          opacity,
+          transform: [{ translateY }],
+        },
+      ]}
     >
-      <View pointerEvents="box-none" style={styles.overlay}>
+      <Animated.View
+        style={[
+          styles.toast,
+          {
+            backgroundColor: colors.surface,
+            borderColor: colors.border,
+          },
+        ]}
+      >
         <Animated.View
-          pointerEvents="none"
           style={[
-            styles.toast,
-            {
-              marginTop: insets.top + SPACING.md,
-              backgroundColor: colors.surface,
-              borderColor: colors.border,
-              opacity,
-              transform: [{ translateY }],
-            },
+            styles.accentBar,
+            { backgroundColor: colors.primary },
           ]}
-        >
-          <View
-            style={[
-              styles.accentBar,
-              { backgroundColor: colors.primary },
-            ]}
-          />
+        />
 
-          <View style={styles.content}>
-            <Icon name="checkmark-circle" size={18} variant="primary" />
-            <ThemedText numberOfLines={2} style={styles.message}>
-              {toast.message}
-            </ThemedText>
-          </View>
+        <Animated.View style={styles.content}>
+          <Icon name="checkmark-circle" size={18} variant="primary" />
+          <ThemedText numberOfLines={2} style={styles.message}>
+            {toast.message}
+          </ThemedText>
         </Animated.View>
-      </View>
-    </Modal>
+      </Animated.View>
+    </Animated.View>
   );
 }
 
 const styles = StyleSheet.create({
-  overlay: {
-    flex: 1,
+  toastContainer: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
     alignItems: 'center',
+    zIndex: 9999,
+    elevation: 9999,
   },
   toast: {
     width: '88%',
