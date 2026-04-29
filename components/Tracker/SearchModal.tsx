@@ -10,8 +10,11 @@ import {
 } from 'react-native';
 import { SPACING } from '@/constants/theme';
 import { useAppTheme } from '@/hooks/useAppTheme';
-import { USDA, type CleanFoodItem } from '@/lib/usda';
-import { mapUSDASearchResponseToCleanFoods } from '@/lib/usda.mapper';
+import {
+  MIN_FOOD_SEARCH_LENGTH,
+  useFoodSearch,
+} from '@/hooks/useFoodSearch';
+import { type CleanFoodItem } from '@/lib/usda';
 import { type FavoriteMealWithItems } from '@/lib/favoriteMeals';
 import { scaleFoodForQuantity } from '@/lib/foodEntryMath';
 import FavoriteMealPickerList from '@/components/Favorites/FavoriteMealPickerList';
@@ -59,16 +62,19 @@ export default function SearchModal({
   onAddFavoriteMeal,
 }: SearchModalProps) {
   const { colors } = useAppTheme();
+  const {
+    query,
+    setQuery,
+    debouncedQuery,
+    results,
+    isSearching,
+    error,
+  } = useFoodSearch({
+    visible,
+    pageSize,
+  });
 
-  // query = what the user is typing right now
-  // debouncedQuery = what we actually search for after a short delay
-  const [query, setQuery] = useState('');
-  const [debouncedQuery, setDebouncedQuery] = useState('');
-
-  // These states drive the search list and the inline quantity editor.
-  const [results, setResults] = useState<CleanFoodItem[]>([]);
-  const [isSearching, setIsSearching] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  // These states drive the inline quantity editor and favorites tab.
   const [expandedFoodId, setExpandedFoodId] = useState<number | null>(null);
   const [quantityInput, setQuantityInput] = useState('1');
   const [isSubmittingFoodId, setIsSubmittingFoodId] = useState<number | null>(null);
@@ -80,11 +86,6 @@ export default function SearchModal({
   // That keeps each modal session feeling fresh and predictable.
   useEffect(() => {
     if (!visible) {
-      setQuery('');
-      setDebouncedQuery('');
-      setResults([]);
-      setError(null);
-      setIsSearching(false);
       setExpandedFoodId(null);
       setQuantityInput('1');
       setIsSubmittingFoodId(null);
@@ -93,68 +94,6 @@ export default function SearchModal({
       setIsSubmittingFavoriteMealId(null);
     }
   }, [defaultFavoriteFilter, visible]);
-
-  // Debounce the user's typing so we do not hit the API on every keypress.
-  useEffect(() => {
-    const timeoutId = setTimeout(() => {
-      setDebouncedQuery(query.trim());
-    }, 400);
-
-    return () => clearTimeout(timeoutId);
-  }, [query]);
-
-  // Run the USDA search whenever the debounced query changes.
-  useEffect(() => {
-    if (!visible) {
-      return;
-    }
-
-    // If the search text is too short, do not search yet.
-    // This avoids noisy results for single characters like "p".
-    if (debouncedQuery.length < 2) {
-      setResults([]);
-      setError(null);
-      setIsSearching(false);
-      return;
-    }
-
-    let cancelled = false;
-
-    async function runSearch() {
-      try {
-        setIsSearching(true);
-        setError(null);
-
-        const response = await USDA.searchFoods(debouncedQuery, 1, pageSize);
-
-        // If this effect has already been cleaned up, do nothing.
-        if (cancelled) {
-          return;
-        }
-
-        const cleanFoods = mapUSDASearchResponseToCleanFoods(response);
-        setResults(cleanFoods);
-      } catch (err) {
-        if (cancelled) {
-          return;
-        }
-
-        setResults([]);
-        setError('Unable to search foods right now.');
-        console.error('Search modal error:', err);
-      } finally {
-        if (!cancelled) {
-          setIsSearching(false);
-        }
-      }
-    }
-
-    runSearch();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [debouncedQuery, visible, pageSize]);
 
   // Expands one food row at a time.
   function toggleExpandedFood(foodId: number) {
@@ -274,7 +213,7 @@ export default function SearchModal({
   }
   // Decides what the modal should show below the search bar.
   function renderContent() {
-    if (query.trim().length < 2) {
+    if (query.trim().length < MIN_FOOD_SEARCH_LENGTH) {
       return (
         <ThemedView style={styles.stateContainer}>
           <ThemedText variant="textMuted" style={styles.stateText}>
