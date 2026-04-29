@@ -32,15 +32,26 @@ import { ThemedText } from '@/components/Shared/ThemedText';
 import { ThemedView } from '@/components/Shared/ThemedView';
 import { useThemeStore } from '@/store/useThemeStore';
 
-// Calories must be a positive number for the constrained target model to work.
-function parsePositiveNumberInput(value: string) {
+// Calories must be a positive whole number for the constrained target model to work.
+function parsePositiveIntegerInput(value: string) {
   const parsedValue = Number(value);
 
-  if (!Number.isFinite(parsedValue) || parsedValue <= 0) {
+  if (!Number.isInteger(parsedValue) || parsedValue <= 0) {
     return null;
   }
 
   return parsedValue;
+}
+
+// Keeps the calories field aligned with the product rule:
+// target calories should be entered as whole numbers only.
+function handleWholeNumberInput(
+  value: string,
+  setValue: React.Dispatch<React.SetStateAction<string>>
+) {
+  if (/^\d*$/.test(value)) {
+    setValue(value);
+  }
 }
 
 // Ratio inputs are stored as integer percentages in profiles.
@@ -137,7 +148,7 @@ const ProfileScreen = function () {
     setIsEditingTargets(false);
   }
 
-  const parsedTargetCalories = parsePositiveNumberInput(targetCaloriesInput);
+  const parsedTargetCalories = parsePositiveIntegerInput(targetCaloriesInput);
   const parsedProteinRatio = parseRatioInput(proteinRatioInput);
   const parsedCarbRatio = parseRatioInput(carbRatioInput);
   const parsedFatRatio = parseRatioInput(fatRatioInput);
@@ -208,7 +219,10 @@ const ProfileScreen = function () {
         parsedCarbRatio == null ||
         parsedFatRatio == null
       ) {
-        Alert.alert('Invalid input', 'Please enter valid calories and macro ratios.');
+        Alert.alert(
+          'Invalid input',
+          'Please enter whole-number calories and valid macro ratios.'
+        );
         return;
       }
 
@@ -338,7 +352,9 @@ const ProfileScreen = function () {
                 <ThemedText style={styles.label}>Target Calories</ThemedText>
                 <TextInput
                   value={targetCaloriesInput}
-                  onChangeText={setTargetCaloriesInput}
+                  onChangeText={(value) =>
+                    handleWholeNumberInput(value, setTargetCaloriesInput)
+                  }
                   keyboardType="number-pad"
                   placeholder="1500"
                   placeholderTextColor={colors.textMuted}
